@@ -40,11 +40,23 @@ export async function getInspectionItems(departmentId?: string): Promise<Inspect
 export type OverdueCar = { id: string; number: string; title: string; departmentId: string; dueDate: string; days: number };
 export type MissedKpi = { id: string; name: string; actual: number; target: number; unit: string; departmentId: string };
 
+export type AuditInspectionSummary = {
+  totalPlans: number;
+  completedPlans: number;
+  inProgressPlans: number;
+  totalFindings: number;
+  conformingFindings: number;
+  observationFindings: number;
+  ncFindings: number;
+  passRate: number;
+};
+
 export type Overview = {
   nc: { counts: Record<NcDisplayStatus, number>; overdue: OverdueCar[] };
   kpi: { counts: Record<KpiStatus, number>; missed: MissedKpi[] };
   /** Employee: only published documents are counted (drafts and cancelled are hidden from them). */
   docs: { counts: Record<DocumentStatus, number> };
+  auditSummary: AuditInspectionSummary;
 };
 
 const daysBetween = (a: string, b: string) =>
@@ -92,5 +104,38 @@ export async function getOverview(user: User): Promise<Overview> {
     if (isPrivileged || isVisibleToEmployee(d)) docCounts[status]++;
   }
 
-  return { nc: { counts: ncCounts, overdue }, kpi: { counts: kpiCounts, missed }, docs: { counts: docCounts } };
+  // Audits summary (สุ่มตรวจข้ามแผนก)
+  const userAudits = db.audits.filter((a) => mine(a.departmentId));
+  let totalFindings = 0;
+  let conformingFindings = 0;
+  let observationFindings = 0;
+  let ncFindings = 0;
+
+  for (const a of userAudits) {
+    for (const f of a.findings) {
+      totalFindings++;
+      if (f.result === "conforming") conformingFindings++;
+      else if (f.result === "observation") observationFindings++;
+      else if (f.result === "nonconforming") ncFindings++;
+    }
+  }
+
+  const passRate = totalFindings > 0 ? Math.round((conformingFindings / totalFindings) * 100) : 0;
+  const auditSummary: AuditInspectionSummary = {
+    totalPlans: userAudits.length,
+    completedPlans: userAudits.filter((a) => a.status === "completed").length,
+    inProgressPlans: userAudits.filter((a) => a.status === "in_progress").length,
+    totalFindings,
+    conformingFindings,
+    observationFindings,
+    ncFindings,
+    passRate,
+  };
+
+  return {
+    nc: { counts: ncCounts, overdue },
+    kpi: { counts: kpiCounts, missed },
+    docs: { counts: docCounts },
+    auditSummary,
+  };
 }

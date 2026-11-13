@@ -136,6 +136,38 @@ export type Requirement = {
 /** Derived from the latest result of each linked checklist. */
 export type RequirementStatus = "compliant" | "non_compliant" | "in_progress" | "not_checked" | "not_linked";
 
+/* ---------- Internal Audits ---------- */
+
+export type InternalAuditStatus = "planned" | "in_progress" | "completed";
+export type FindingResult = "conforming" | "observation" | "nonconforming" | "pending";
+
+export type AuditFinding = {
+  id: string;
+  clause: string;
+  question: string;
+  result: FindingResult;
+  evidence?: string;
+  ncId?: string; // links to Nonconformity if nonconforming
+};
+
+export type InternalAudit = {
+  id: string;
+  code: string; // e.g. "IA-2026-01"
+  title: string;
+  standardId: string;
+  departmentId: string;
+  leadAuditorId: string;
+  auditorIds?: string[];
+  scheduledDate: string; // YYYY-MM-DD
+  completedDate?: string;
+  scope: string;
+  status: InternalAuditStatus;
+  summary?: string;
+  findings: AuditFinding[];
+  updatedAt: string;
+  updatedBy: string;
+};
+
 /* ---------- Part 7: NC / CAR Tracking ---------- */
 
 /** Stored workflow status. "Overdue" is derived from dueDate (see lib/nc.ts). */
@@ -257,7 +289,8 @@ export type AuditEntityType =
   | "risk"
   | "training"
   | "user"
-  | "settings";
+  | "settings"
+  | "audit";
 
 export type AuditAction =
   | "login"

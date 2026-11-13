@@ -554,6 +554,7 @@ export const th = {
     training: "การฝึกอบรม",
     user: "ผู้ใช้งาน",
     settings: "ตั้งค่าระบบ",
+    audit: "ตรวจประเมินภายใน",
   },
   risks: {
     add: "เพิ่มความเสี่ยง",

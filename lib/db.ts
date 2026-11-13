@@ -8,11 +8,13 @@ import { seedNonconformities } from "@/data/nonconformities";
 import { seedKpis } from "@/data/kpis";
 import { seedRisks } from "@/data/risks";
 import { seedTraining } from "@/data/training";
+import { seedAudits } from "@/data/audits";
 import { users as seedUsers } from "@/data/users";
 import { buildSeedAuditLog } from "@/data/auditLog";
 import type {
   AuditEntry,
   ChecklistItem,
+  InternalAudit,
   IsoDocument,
   IsoStandard,
   Kpi,
@@ -49,6 +51,7 @@ export type DemoDb = {
   kpis: Kpi[];
   risks: RiskItem[];
   training: TrainingRecord[];
+  audits: InternalAudit[];
   users: User[];
   settings: SystemSettings;
   auditLog: AuditEntry[]; // newest last
@@ -66,6 +69,7 @@ function buildSeedDb(): DemoDb {
     kpis: structuredClone(seedKpis),
     risks: structuredClone(seedRisks),
     training: structuredClone(seedTraining),
+    audits: structuredClone(seedAudits),
     users: structuredClone(seedUsers).map((u) => ({ ...u, active: u.active ?? true })),
     settings: structuredClone(DEFAULT_SETTINGS),
     auditLog: buildSeedAuditLog(),
@@ -84,6 +88,7 @@ export async function readDb(): Promise<DemoDb> {
       kpis: parsed.kpis ?? structuredClone(seedKpis),
       risks: parsed.risks ?? structuredClone(seedRisks),
       training: parsed.training ?? structuredClone(seedTraining),
+      audits: parsed.audits ?? structuredClone(seedAudits),
       users: parsed.users?.length ? parsed.users : structuredClone(seedUsers).map((u) => ({ ...u, active: u.active ?? true })),
       settings: parsed.settings ? { ...DEFAULT_SETTINGS, ...parsed.settings } : structuredClone(DEFAULT_SETTINGS),
       auditLog: parsed.auditLog?.length ? parsed.auditLog : buildSeedAuditLog(),

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { navigation } from "@/config/navigation";
 import { canAccess, isActivePath } from "@/config/access";
 import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
+import { BrandLogo } from "@/components/ui/BrandLogo";
 import { useI18n } from "@/components/providers/I18nProvider";
 import { useSessionUser } from "@/components/providers/SessionProvider";
 import { cn } from "@/lib/cn";
@@ -35,17 +36,7 @@ function Brand({
         title={isCollapsed ? "คลิกเพื่อแสดงแถบเมนู (Show Sidebar)" : "คลิกเพื่อซ่อนแถบเมนู (Hide Sidebar)"}
         aria-label={isCollapsed ? "แสดงแถบเมนู" : "ซ่อนแถบเมนู"}
       >
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary text-white font-black text-sm shadow-xs transition-transform group-hover:scale-105">
-          QE
-        </span>
-        <span
-          className={cn(
-            "text-lg font-bold tracking-tight text-text leading-tight group-hover:text-primary transition-colors",
-            isCollapsed && "lg:hidden",
-          )}
-        >
-          <span className="text-primary">QE</span>Tracking
-        </span>
+        <BrandLogo compact={Boolean(isCollapsed)} showSubtitle />
       </button>
 
       {/* Mobile drawer close button */}

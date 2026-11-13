@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronRightIcon } from "@/components/icons";
+import { BrandLogo } from "@/components/ui/BrandLogo";
 import { useI18n } from "@/components/providers/I18nProvider";
 import { useSessionUser } from "@/components/providers/SessionProvider";
 import { departmentName } from "@/lib/format";
@@ -27,12 +28,7 @@ export function Topbar({
           title="คลิกเพื่อแสดงแถบเมนู (Show Sidebar)"
           aria-label="แสดงแถบเมนู"
         >
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white font-black text-xs shadow-xs">
-            QE
-          </span>
-          <span className="text-base font-bold text-text">
-            <span className="text-primary">QE</span>Tracking
-          </span>
+          <BrandLogo size="sm" />
           <ChevronRightIcon width={14} height={14} className="text-text-muted group-hover:text-primary transition-colors" />
         </button>
       </div>

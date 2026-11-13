@@ -10,6 +10,7 @@ export const routeAccess: Record<string, Role[]> = {
   "/standards": ["admin", "qe", "iso", "employee"],
   "/requirements": ["admin", "qe", "iso", "employee"],
   "/documents": ["admin", "qe", "iso", "employee"],
+  "/audits": ["admin", "qe", "iso"],
   "/corrective-actions": ["admin", "qe", "iso", "employee"],
   "/kpi": ["admin", "qe", "iso", "employee"],
   "/risks": ["admin", "qe", "iso", "employee"],

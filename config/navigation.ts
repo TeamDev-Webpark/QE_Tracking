@@ -1,6 +1,7 @@
 import type { ComponentType, SVGProps } from "react";
 import {
   ActionIcon,
+  AuditIcon,
   DashboardIcon,
   DocumentIcon,
   HistoryIcon,
@@ -41,6 +42,7 @@ export const navigation: NavGroup[] = [
       { labelKey: "standards", href: "/standards", icon: StandardIcon },
       { labelKey: "requirements", href: "/requirements", icon: RequirementIcon },
       { labelKey: "documents", href: "/documents", icon: DocumentIcon },
+      { labelKey: "audits", href: "/audits", icon: AuditIcon },
       { labelKey: "correctiveActions", href: "/corrective-actions", icon: ActionIcon },
     ],
   },

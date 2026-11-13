@@ -3,6 +3,7 @@
 import { useActionState, useRef } from "react";
 import { login, type LoginState } from "@/lib/auth/actions";
 import { useI18n } from "@/components/providers/I18nProvider";
+import { BrandLogo } from "@/components/ui/BrandLogo";
 import { Button } from "@/components/ui";
 import { getDemoAccounts, getUserById } from "@/data";
 
@@ -29,9 +30,9 @@ export function LoginForm() {
   return (
     <>
       <div className="mb-8 text-center">
-        <p className="mb-4 text-2xl font-extrabold tracking-tight">
-          <span className="text-primary">QE</span>Tracking
-        </p>
+        <div className="mb-5 flex justify-center">
+          <BrandLogo size="lg" showSubtitle />
+        </div>
         <h1 className="text-2xl font-bold">{t.login.title}</h1>
         <p className="mt-2 text-sm text-text-muted">{t.login.subtitle}</p>
       </div>

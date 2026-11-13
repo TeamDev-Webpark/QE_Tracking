@@ -12,6 +12,7 @@ import { displayName } from "@/lib/user";
 import { useActiveDepartment } from "@/lib/useActiveDepartment";
 import { InspectionResults, type ResultTab } from "./InspectionResults";
 import { OverviewCards } from "./OverviewCards";
+import { InspectionComparisonCard } from "./InspectionComparisonCard";
 import { formatPercent, ResultsBarChart, type ChartRow } from "./ResultsBarChart";
 import { StatTile } from "./StatTile";
 
@@ -177,6 +178,15 @@ export function DashboardView({ items, overview }: { items: InspectionItem[]; ov
       </div>
 
       <OverviewCards overview={overview} />
+
+      <InspectionComparisonCard
+        dailyTotal={total.total}
+        dailyPassed={total.passed}
+        dailyFailed={total.failed}
+        dailyPending={total.notChecked}
+        dailyCompliance={total.compliance ?? 0}
+        auditSummary={overview.auditSummary}
+      />
 
       <div className={isPrivileged ? "mb-6 grid gap-6 lg:grid-cols-2" : "mb-6"}>
         <Card>
