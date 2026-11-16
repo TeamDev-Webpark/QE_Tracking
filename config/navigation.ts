@@ -47,11 +47,17 @@ export const navigation: NavGroup[] = [
     ],
   },
   {
+    titleKey: "groupTraining",
+    items: [
+      { labelKey: "training", href: "/training", icon: TrainingIcon },
+      { labelKey: "trainingCourses", href: "/training-courses", icon: RequirementIcon },
+      { labelKey: "elearning", href: "/elearning", icon: StandardIcon },
+    ],
+  },
+  {
     titleKey: "groupSystem",
     items: [
       { labelKey: "risks", href: "/risks", icon: RiskIcon },
-      { labelKey: "training", href: "/training", icon: TrainingIcon },
-      { labelKey: "trainingCourses", href: "/training-courses", icon: RequirementIcon },
       { labelKey: "kpi", href: "/kpi", icon: KpiIcon },
       { labelKey: "reports", href: "/reports", icon: ReportIcon },
       { labelKey: "auditTrail", href: "/audit-trail", icon: HistoryIcon },

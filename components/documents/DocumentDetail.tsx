@@ -391,6 +391,7 @@ export function DocumentDetail({
               <div className="relative">
                 <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
                 <Input
+                  type="search"
                   value={rightsQuery}
                   onChange={(e) => setRightsQuery(e.target.value)}
                   placeholder="ค้นหาพนักงาน..."

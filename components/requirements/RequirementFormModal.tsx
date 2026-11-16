@@ -89,7 +89,7 @@ export function RequirementFormModal({
           </p>
         )}
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid items-start gap-4 sm:grid-cols-2">
           <Field label={t.requirements.standard} htmlFor="req-std" required error={err("standardId")}>
             <Select
               id="req-std"
@@ -119,7 +119,7 @@ export function RequirementFormModal({
           <Textarea id="req-desc" rows={2} value={form.description} onChange={set("description")} />
         </Field>
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid items-start gap-4 sm:grid-cols-2">
           <Field label={t.requirements.department} htmlFor="req-dept" required error={err("departmentId")}>
             <Select id="req-dept" value={form.departmentId} onChange={set("departmentId")} invalid={!!errors.departmentId}>
               <option value="">{t.checklist.selectDepartment}</option>

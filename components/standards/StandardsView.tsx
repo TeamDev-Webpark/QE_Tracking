@@ -77,14 +77,14 @@ export function StandardsView({ standards }: { standards: StandardWithStats[] })
                 🔍
               </span>
               <input
-                type="text"
+                type="search"
                 value={search}
                 onChange={(e) => {
             setSearch(e.target.value);
             setPage(1);
           }}
                 placeholder="ค้นหามาตรฐาน ISO (เช่น 9001, 14001, คุณภาพ)..."
-                className="h-9 w-full rounded-lg border border-border/80 bg-surface pl-8 pr-7 text-xs text-text placeholder:text-text-muted focus:border-primary focus:outline-hidden transition-colors"
+                className="h-9 w-full cursor-default rounded-lg border border-border/80 bg-surface pl-8 pr-7 text-xs text-text placeholder:text-text-muted focus:border-primary focus:outline-hidden transition-colors"
               />
               {search && (
                 <button

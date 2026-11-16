@@ -398,11 +398,11 @@ export function ChecklistView({
                 🔍
               </span>
               <input
-                type="text"
+                type="search"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="ค้นหารายการตรวจ หรือเลขข้อกำหนด..."
-                className="h-9 w-full rounded-lg border border-border/80 bg-surface pl-8 pr-7 text-xs text-text placeholder:text-text-muted focus:border-primary focus:outline-hidden transition-colors"
+                className="h-9 w-full cursor-default rounded-lg border border-border/80 bg-surface pl-8 pr-7 text-xs text-text placeholder:text-text-muted focus:border-primary focus:outline-hidden transition-colors"
               />
               {searchQuery && (
                 <button

@@ -3,6 +3,7 @@
  * Fields are a starting structure only; each module's Part may extend them.
  */
 import type { Role } from "@/config/access";
+import type { CourseCurriculum } from "@/data/elearningCurriculum";
 
 export type { Role };
 
@@ -270,6 +271,7 @@ export type TrainingCourse = {
   durationHours?: number;
   validityMonths?: number; // e.g. 12 = 1 year
   active: boolean;
+  curriculum?: CourseCurriculum;
   updatedAt: string;
   updatedBy: string;
 };

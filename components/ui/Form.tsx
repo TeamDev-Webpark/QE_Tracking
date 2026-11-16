@@ -3,6 +3,8 @@ import { cn } from "@/lib/cn";
 
 const control =
   "w-full rounded-control border bg-page px-4 text-sm outline-none transition-colors focus:border-primary disabled:opacity-60";
+const selectArrow =
+  "appearance-none bg-no-repeat bg-[position:right_0.75rem_center] bg-[size:16px_16px] bg-[url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E\")] pr-9";
 
 /** Label + control + error message. */
 export function Field({
@@ -23,8 +25,8 @@ export function Field({
   className?: string;
 }) {
   return (
-    <div className={className}>
-      <label htmlFor={htmlFor} className="mb-2 block text-sm font-semibold">
+    <div className={cn("min-w-0", className)}>
+      <label htmlFor={htmlFor} className="mb-1.5 sm:mb-2 block text-sm font-semibold">
         {label}
         {required && <span className="ml-0.5 text-danger">*</span>}
       </label>
@@ -42,7 +44,7 @@ export function Input({ className, invalid, ...props }: InputHTMLAttributes<HTML
   return (
     <input
       aria-invalid={invalid || undefined}
-      className={cn(control, "h-11", invalid ? "border-danger" : "border-border", className)}
+      className={cn(control, "h-10 sm:h-11", invalid ? "border-danger" : "border-border", className)}
       {...props}
     />
   );
@@ -52,7 +54,13 @@ export function Select({ className, invalid, ...props }: SelectHTMLAttributes<HT
   return (
     <select
       aria-invalid={invalid || undefined}
-      className={cn(control, "h-11", invalid ? "border-danger" : "border-border", className)}
+      className={cn(
+        control,
+        selectArrow,
+        "h-10 sm:h-11 py-0 whitespace-nowrap truncate leading-normal",
+        invalid ? "border-danger" : "border-border",
+        className,
+      )}
       {...props}
     />
   );

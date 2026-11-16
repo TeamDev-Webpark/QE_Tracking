@@ -19,7 +19,7 @@ export function Modal({
   title: string;
   children: ReactNode;
   footer?: ReactNode;
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "xl";
   closeLabel?: string;
 }) {
   const titleId = useId();
@@ -50,6 +50,7 @@ export function Modal({
           size === "sm" && "sm:max-w-md",
           size === "md" && "sm:max-w-lg",
           size === "lg" && "sm:max-w-2xl",
+          size === "xl" && "sm:max-w-5xl lg:max-w-6xl",
         )}
       >
         <div className="flex items-center justify-between border-b border-border/60 px-4 py-3.5 sm:px-6 sm:py-4">

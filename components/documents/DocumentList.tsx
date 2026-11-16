@@ -114,6 +114,7 @@ export function DocumentList({
     {
       key: "version",
       header: t.documents.version,
+      className: "whitespace-nowrap",
       render: (d) => (
         <div className="space-y-1">
           <p className="font-bold">{d.published ? `v${d.published.version}` : "–"}</p>
@@ -157,27 +158,38 @@ export function DocumentList({
     {
       key: "quota",
       header: t.documents.remaining,
+      className: "whitespace-nowrap",
       render: (d) => <QuotaText quota={d.myQuota} />,
     },
     {
       key: "actions",
       header: t.common.actions,
-      className: "text-right",
+      className: "w-px text-right whitespace-nowrap",
       render: (d) => {
         const canDownload = d.status === "published" && (d.myQuota === null || d.myQuota.remaining > 0);
         return (
-          <div className="flex flex-wrap justify-end gap-1.5">
-            <Button size="sm" variant="secondary" onClick={() => setPreviewDoc(d)} className="whitespace-nowrap">
+          <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => setPreviewDoc(d)}
+              className="h-8 px-2.5 text-xs whitespace-nowrap"
+            >
               {t.documents.preview}
             </Button>
             <Link
               href={`/documents/${d.id}`}
-              className="inline-flex h-9 items-center rounded-control border border-border px-3 text-sm font-semibold whitespace-nowrap hover:bg-page"
+              className="inline-flex h-8 items-center rounded-control border border-border bg-surface px-2.5 text-xs font-semibold whitespace-nowrap hover:bg-page transition-colors"
             >
               {t.documents.view}
             </Link>
             {d.status === "published" && (
-              <Button size="sm" onClick={() => download(d.id)} disabled={pending || !canDownload} className="whitespace-nowrap">
+              <Button
+                size="sm"
+                onClick={() => download(d.id)}
+                disabled={pending || !canDownload}
+                className="h-8 px-2.5 text-xs whitespace-nowrap"
+              >
                 {t.documents.download}
               </Button>
             )}

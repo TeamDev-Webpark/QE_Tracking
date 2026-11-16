@@ -161,9 +161,9 @@ export function RequirementRegister({
     {
       key: "actions",
       header: "",
-      className: "text-right",
+      className: "w-px text-right whitespace-nowrap",
       render: (r: RequirementRow) => (
-        <div className="flex flex-wrap items-center justify-end gap-1.5">
+        <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
           <button
             type="button"
             onClick={() => setViewing(r)}

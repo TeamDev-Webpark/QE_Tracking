@@ -121,6 +121,7 @@ export const th = {
   },
   nav: {
     groupIso: "ระบบงาน ISO",
+    groupTraining: "การฝึกอบรม",
     groupSystem: "ระบบ",
     dashboard: "แดชบอร์ด",
     standards: "มาตรฐาน ISO",
@@ -131,6 +132,7 @@ export const th = {
     risks: "บริหารความเสี่ยง",
     training: "อบรมและสมรรถนะ",
     trainingCourses: "หลักสูตรการอบรม",
+    elearning: "E-Learning",
     kpi: "KPI",
     auditTrail: "Audit Trail",
     reports: "รายงาน",
@@ -145,6 +147,7 @@ export const th = {
     risks: "ประเมินความเสี่ยงและแผนลดความเสี่ยง (ISO 6.1)",
     training: "บันทึกการฝึกอบรมและสมรรถนะบุคลากร (ISO 7.2)",
     trainingCourses: "จัดการหลักสูตรการอบรมมาตรฐาน ISO และติดตามจำนวนผู้เข้าอบรม",
+    elearning: "บทเรียนออนไลน์และแบบทดสอบประเมินความรู้มาตรฐาน ISO (ซิงก์ผลเข้าประวัติการอบรมอัตโนมัติ)",
     kpi: "ตัวชี้วัดผลการดำเนินงาน เทียบผลจริงกับเป้าหมาย",
     auditTrail: "ประวัติการเปลี่ยนแปลงข้อมูลสำคัญย้อนหลัง",
     reports: "สรุปรายงานระบบ ISO",

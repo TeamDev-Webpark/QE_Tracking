@@ -259,9 +259,9 @@ export function InspectionResults({
     {
       key: "detail",
       header: "",
-      className: "text-right",
+      className: "w-px text-right whitespace-nowrap",
       render: (i) => (
-        <div className="flex flex-wrap items-center justify-end gap-1.5">
+        <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
           <Link
             href={`/standards/${i.standardId}?highlight=${i.id}&dept=${i.departmentId}`}
             className="inline-flex items-center gap-1 rounded-control border border-border/80 bg-surface px-2.5 py-1.5 text-xs font-semibold text-text hover:border-primary/50 hover:bg-primary-soft hover:text-primary transition-all shadow-2xs group"
@@ -338,14 +338,14 @@ export function InspectionResults({
             🔍
           </span>
           <input
-            type="text"
+            type="search"
             value={searchQuery}
             onChange={(e) => {
               setSearchQuery(e.target.value);
               setPage(1);
             }}
             placeholder="ค้นหาข้อกำหนด, ชื่อรายการตรวจ, แผนก..."
-            className="w-full rounded-control border border-border bg-surface py-1.5 pr-8 pl-8 text-xs text-text placeholder:text-text-muted/70 focus:outline-none focus:ring-1 focus:ring-primary"
+            className="w-full cursor-default rounded-control border border-border bg-surface py-1.5 pr-8 pl-8 text-xs text-text placeholder:text-text-muted/70 focus:outline-none focus:ring-1 focus:ring-primary"
           />
           {searchQuery && (
             <button
