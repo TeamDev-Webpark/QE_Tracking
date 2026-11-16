@@ -114,8 +114,7 @@ export function ChecklistView({
     for (const c of checklists) {
       const match =
         requirements.find((r) => r.checklistIds.includes(c.id)) ??
-        requirements.find((r) => r.number === c.clause && r.departmentId === c.departmentId) ??
-        requirements.find((r) => r.number === c.clause);
+        requirements.find((r) => r.number === c.clause && r.departmentId === c.departmentId);
       if (match) map.set(c.id, match);
     }
     return map;

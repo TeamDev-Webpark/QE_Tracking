@@ -21,7 +21,7 @@ export function ConfirmDialog({
   confirmLabel: string;
   cancelLabel: string;
   pending?: boolean;
-  confirmVariant?: "danger" | "primary";
+  confirmVariant?: "danger" | "primary" | "success";
   onConfirm: () => void;
   onCancel: () => void;
 }) {

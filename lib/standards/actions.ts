@@ -178,7 +178,9 @@ export async function saveChecklist(
 
   const reqId = clean(input.requirementId);
   const prevReqId = clean(input.previousRequirementId);
-  const req = db.requirements.find((r) => r.id === reqId && r.standardId === standardId);
+  const req = db.requirements.find(
+    (r) => r.id === reqId && r.standardId === standardId && (Boolean(r.publishedAt) || (id && r.id === prevReqId)),
+  );
 
   const { data, fieldErrors } = validateChecklist(input, req?.number);
   if (Object.keys(fieldErrors).length) return { ok: false, fieldErrors };

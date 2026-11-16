@@ -74,6 +74,6 @@ export async function getAuditDetail(id: string) {
       })),
     },
     standards: db.standards.map((s) => ({ id: s.id, label: `${s.code}:${s.version} — ${s.name}` })),
-    requirements: db.requirements.filter((r) => r.standardId === audit.standardId),
+    requirements: db.requirements.filter((r) => Boolean(r.publishedAt) && r.standardId === audit.standardId),
   };
 }

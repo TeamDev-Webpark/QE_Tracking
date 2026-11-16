@@ -80,7 +80,9 @@ export async function getNcList(user: User) {
   }
 
   const standards: StandardOption[] = db.standards.map((s) => ({ id: s.id, label: label(db, s.id) }));
-  const requirements: NcRequirementOption[] = db.requirements.map((r) => ({
+  const requirements: NcRequirementOption[] = db.requirements
+    .filter((r) => Boolean(r.publishedAt))
+    .map((r) => ({
     id: r.id,
     standardId: r.standardId,
     number: r.number,

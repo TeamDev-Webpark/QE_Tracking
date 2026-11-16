@@ -1,4 +1,4 @@
-import type { ChecklistItem, RequirementStatus } from "./types";
+import type { ChecklistItem, Requirement, RequirementStatus } from "./types";
 
 export const REQUIREMENT_STATUSES: RequirementStatus[] = [
   "compliant",
@@ -51,4 +51,18 @@ export function filterRequirements<
       (!f.departmentId || r.departmentId === f.departmentId) &&
       (!f.status || r.status === f.status),
   );
+}
+
+/**
+ * A checklist item is active when at least one matching requirement is published
+ * (or if no requirement in the register matches it).
+ */
+export function isChecklistPublished(c: ChecklistItem, requirements: Requirement[]): boolean {
+  const linked = requirements.filter(
+    (r) =>
+      r.checklistIds.includes(c.id) ||
+      (r.standardId === c.standardId && r.number === c.clause && r.departmentId === c.departmentId),
+  );
+  if (linked.length === 0) return true;
+  return linked.some((r) => Boolean(r.publishedAt));
 }

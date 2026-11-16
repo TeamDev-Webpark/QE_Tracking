@@ -1,7 +1,7 @@
 import type { Requirement } from "@/lib/types";
 
 /** Seed data — copied into the Demo store (.data/db.json) on first run. */
-export const seedRequirements: Requirement[] = [
+const publishedSeedRequirements: Omit<Requirement, "publishedAt" | "publishedBy">[] = [
   // ============================================================================
   // 1. ฝ่ายประกันคุณภาพ (quality)
   // ============================================================================
@@ -126,4 +126,47 @@ export const seedRequirements: Requirement[] = [
   // ============================================================================
   { id: "req-9001-pln-81", standardId: "iso9001", number: "8.1", name: "การวางแผนและควบคุมตารางการผลิตหลัก (MPS)", description: "จัดทำแผนการผลิตให้สอดคล้องกับวัตถุดิบคงคลังและควบคุมการเดินเครื่องจักร", departmentId: "planning", ownerId: "u1", checklistIds: ["cl-9001-planning", "cl-9001-pln-2", "cl-14001-pln-1"] },
   { id: "req-9001-pln-852", standardId: "iso9001", number: "8.5.2", name: "การกำหนดหมายเลขล็อตและรหัสใบสั่งผลิต (Work Order)", description: "ออกใบสั่งผลิตพร้อมรหัสสอบกลับได้ของแต่ละล็อตการผลิตอย่างชัดเจน", departmentId: "planning", ownerId: "u2", checklistIds: ["cl-9001-pln-3"] },
+];
+
+/** Draft requirements (ยังไม่ประกาศใช้ — cannot be selected in other modules until published). */
+const draftSeedRequirements: Requirement[] = [
+  {
+    id: "req-9001-qa-draft-103",
+    standardId: "iso9001",
+    number: "10.3",
+    name: "การปรับปรุงอย่างต่อเนื่อง (ร่างทบทวนประจำปี)",
+    description: "อยู่ระหว่างทบทวนเกณฑ์การประเมินผลโครงการปรับปรุงคุณภาพประจำปี 2027",
+    departmentId: "quality",
+    ownerId: "u1",
+    checklistIds: [],
+  },
+  {
+    id: "req-14001-prd-draft-614",
+    standardId: "iso14001",
+    number: "6.1.4",
+    name: "แผนปฏิบัติการลดก๊าซเรือนกระจกในสายการผลิต",
+    description: "ร่างข้อกำหนดการตรวจวัดคาร์บอนฟุตพริ้นท์และเป้าหมายลดพลังงานต่อหน่วยผลิต",
+    departmentId: "production",
+    ownerId: "u3",
+    checklistIds: [],
+  },
+  {
+    id: "req-9001-it-draft-856",
+    standardId: "iso9001",
+    number: "8.5.6",
+    name: "การควบคุมการเปลี่ยนแปลงระบบคลาวด์และ ERP",
+    description: "ร่างแนวทางอนุมัติการเปลี่ยนแปลงระบบสารสนเทศหลักก่อนใช้งานจริง",
+    departmentId: "it",
+    ownerId: "u1",
+    checklistIds: [],
+  },
+];
+
+export const seedRequirements: Requirement[] = [
+  ...publishedSeedRequirements.map((r) => ({
+    ...r,
+    publishedAt: "2026-09-01T09:00:00.000Z",
+    publishedBy: r.ownerId,
+  })),
+  ...draftSeedRequirements,
 ];

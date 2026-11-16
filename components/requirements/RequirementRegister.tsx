@@ -1,15 +1,15 @@
 "use client";
 
 import { useDeferredValue, useMemo, useState, useTransition } from "react";
-import { Button, Card, ConfirmDialog, DataTable, Input, Modal, PageHeader, Select, type Column, useToast } from "@/components/ui";
+import { Badge, Button, Card, ConfirmDialog, DataTable, Input, Modal, PageHeader, Select, type Column, useToast } from "@/components/ui";
 import { EditIcon, PlusIcon, SearchIcon, TrashIcon } from "@/components/icons";
 import { useI18n } from "@/components/providers/I18nProvider";
 import { useSessionUser } from "@/components/providers/SessionProvider";
 import { LinkedChecklistsPanel } from "./LinkedChecklistsPanel";
 import { getUserById } from "@/data";
 import { departments } from "@/data/departments";
-import { departmentName } from "@/lib/format";
-import { deleteRequirement } from "@/lib/requirements/actions";
+import { departmentName, formatDate } from "@/lib/format";
+import { deleteRequirement, setRequirementPublished } from "@/lib/requirements/actions";
 import { filterRequirements, REQUIREMENT_STATUSES, type RequirementFilter } from "@/lib/requirements";
 import type { ChecklistOption, RequirementRow, StandardOption } from "@/lib/requirements/queries";
 import type { Requirement, RequirementStatus } from "@/lib/types";
@@ -36,6 +36,7 @@ export function RequirementRegister({
   const canManage = role === "admin" || role === "qe";
   const [filter, setFilter] = useState<RequirementFilter>(emptyFilter);
   const [standardFilter, setStandardFilter] = useState<string>("");
+  const [publishFilter, setPublishFilter] = useState<"" | "published" | "unpublished">("");
   const deferredQuery = useDeferredValue(filter.query);
   // undefined = closed, null = add new
   const [editing, setEditing] = useState<Requirement | null>();
@@ -43,6 +44,8 @@ export function RequirementRegister({
   const [viewing, setViewing] = useState<RequirementRow>();
   const [deleting, setDeleting] = useState<RequirementRow>();
   const [deletePending, startDelete] = useTransition();
+  const [publishing, setPublishing] = useState<{ row: RequirementRow; publish: boolean }>();
+  const [publishPending, startPublish] = useTransition();
 
   const confirmDelete = () => {
     if (!deleting) return;
@@ -54,14 +57,36 @@ export function RequirementRegister({
     });
   };
 
+  const confirmPublish = () => {
+    if (!publishing) return;
+    const { row, publish } = publishing;
+    startPublish(async () => {
+      const res = await setRequirementPublished(row.id, publish);
+      setPublishing(undefined);
+      if (res.ok) {
+        toast.success(publish ? `ประกาศใช้ข้อกำหนด ${row.number} แล้ว` : `ยกเลิกการประกาศใช้ข้อกำหนด ${row.number} แล้ว`);
+        if (viewing?.id === row.id) setViewing(undefined);
+      } else if (res.error) {
+        toast.error(t.errors[res.error]);
+      }
+    });
+  };
+
   const visible = useMemo(
     () =>
       filterRequirements(rows, { ...filter, query: deferredQuery }).filter(
-        (r) => !standardFilter || r.standardId === standardFilter,
+        (r) =>
+          (!standardFilter || r.standardId === standardFilter) &&
+          (!publishFilter || (publishFilter === "published" ? !!r.publishedAt : !r.publishedAt)),
       ),
-    [rows, filter, deferredQuery, standardFilter],
+    [rows, filter, deferredQuery, standardFilter, publishFilter],
   );
-  const filtered = filter.query !== "" || filter.departmentId !== "" || filter.status !== "" || standardFilter !== "";
+  const filtered =
+    filter.query !== "" ||
+    filter.departmentId !== "" ||
+    filter.status !== "" ||
+    standardFilter !== "" ||
+    publishFilter !== "";
 
   const columns: Column<RequirementRow>[] = [
     {
@@ -120,18 +145,41 @@ export function RequirementRegister({
       ),
     },
     {
+      key: "publish",
+      header: "การประกาศใช้",
+      className: "whitespace-nowrap",
+      render: (r) =>
+        r.publishedAt ? (
+          <div className="space-y-1">
+            <Badge tone="success">ประกาศใช้แล้ว</Badge>
+            <p className="text-[11px] text-text-muted">{formatDate(r.publishedAt, lang)}</p>
+          </div>
+        ) : (
+          <Badge tone="neutral">ยังไม่ประกาศใช้</Badge>
+        ),
+    },
+    {
       key: "actions",
       header: "",
-      className: "w-px text-right whitespace-nowrap",
+      className: "text-right",
       render: (r: RequirementRow) => (
-        <div className="flex items-center justify-end gap-1.5">
+        <div className="flex flex-wrap items-center justify-end gap-1.5">
           <button
             type="button"
             onClick={() => setViewing(r)}
-            className="rounded-control border border-border/80 bg-surface px-2.5 py-1.5 text-xs font-semibold text-primary hover:border-primary/40 hover:bg-primary-soft transition-colors cursor-pointer"
+            className="rounded-control border border-border/80 bg-surface px-2.5 py-1.5 text-xs font-semibold whitespace-nowrap text-primary hover:border-primary/40 hover:bg-primary-soft transition-colors cursor-pointer"
           >
             ดูรายการตรวจ ({r.summary.total})
           </button>
+          {canManage && !r.publishedAt && (
+            <button
+              type="button"
+              onClick={() => setPublishing({ row: r, publish: true })}
+              className="rounded-control bg-success-soft px-2.5 py-1.5 text-xs font-bold whitespace-nowrap text-success hover:bg-success hover:text-white transition-colors cursor-pointer"
+            >
+              ประกาศใช้
+            </button>
+          )}
           {canManage && (
             <>
               <button
@@ -223,6 +271,16 @@ export function RequirementRegister({
                 </option>
               ))}
             </Select>
+            <Select
+              aria-label="การประกาศใช้"
+              value={publishFilter}
+              onChange={(e) => setPublishFilter(e.target.value as "" | "published" | "unpublished")}
+              className="lg:w-44"
+            >
+              <option value="">การประกาศใช้ทั้งหมด</option>
+              <option value="published">ประกาศใช้แล้ว</option>
+              <option value="unpublished">ยังไม่ประกาศใช้</option>
+            </Select>
             {isPrivileged ? (
               <Select
                 aria-label={t.requirements.department}
@@ -255,6 +313,7 @@ export function RequirementRegister({
               onClick={() => {
                 setFilter(emptyFilter);
                 setStandardFilter("");
+                setPublishFilter("");
               }}
               className="font-semibold text-primary hover:underline"
             >
@@ -280,19 +339,33 @@ export function RequirementRegister({
           closeLabel={t.common.close}
           title={`ข้อกำหนด ${viewing.number} · ${viewing.name}`}
           footer={
-            <div className="flex w-full items-center justify-between gap-2">
+            <div className="flex w-full flex-wrap items-center justify-between gap-2">
               {canManage ? (
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    const target = viewing;
-                    setViewing(undefined);
-                    setEditing(target);
-                  }}
-                >
-                  <EditIcon width={16} height={16} />
-                  แก้ไข / ผูกรายการตรวจ
-                </Button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      const target = viewing;
+                      setViewing(undefined);
+                      setEditing(target);
+                    }}
+                  >
+                    <EditIcon width={16} height={16} />
+                    แก้ไข / ผูกรายการตรวจ
+                  </Button>
+                  {viewing.publishedAt ? (
+                    <Button
+                      variant="secondary"
+                      onClick={() => setPublishing({ row: viewing, publish: false })}
+                    >
+                      ยกเลิกประกาศใช้
+                    </Button>
+                  ) : (
+                    <Button onClick={() => setPublishing({ row: viewing, publish: true })}>
+                      ประกาศใช้ข้อกำหนด
+                    </Button>
+                  )}
+                </div>
               ) : (
                 <div />
               )}
@@ -307,7 +380,14 @@ export function RequirementRegister({
             <div className="rounded-control bg-page p-4 space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-xs font-bold text-primary">{viewing.standardLabel} · ข้อ {viewing.number}</span>
-                <RequirementStatusBadge status={viewing.status} />
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {viewing.publishedAt ? (
+                    <Badge tone="success">ประกาศใช้แล้ว</Badge>
+                  ) : (
+                    <Badge tone="neutral">ยังไม่ประกาศใช้</Badge>
+                  )}
+                  <RequirementStatusBadge status={viewing.status} />
+                </div>
               </div>
               {viewing.description && <p className="text-text">{viewing.description}</p>}
               <div className="grid gap-3 pt-2 border-t border-border/60 sm:grid-cols-2 text-xs">
@@ -324,6 +404,23 @@ export function RequirementRegister({
                     })()}
                   </strong>
                 </div>
+                {viewing.publishedAt && (
+                  <>
+                    <div>
+                      <span className="text-text-muted">วันที่ประกาศใช้: </span>
+                      <strong className="text-text">{formatDate(viewing.publishedAt, lang)}</strong>
+                    </div>
+                    <div>
+                      <span className="text-text-muted">ผู้ประกาศใช้: </span>
+                      <strong className="text-text">
+                        {(() => {
+                          const publisher = viewing.publishedBy ? getUserById(viewing.publishedBy) : undefined;
+                          return publisher ? displayName(publisher, lang) : "-";
+                        })()}
+                      </strong>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
@@ -377,6 +474,23 @@ export function RequirementRegister({
         pending={deletePending}
         onConfirm={confirmDelete}
         onCancel={() => setDeleting(undefined)}
+      />
+      <ConfirmDialog
+        open={!!publishing}
+        title={publishing?.publish ? "ยืนยันการประกาศใช้ข้อกำหนด" : "ยกเลิกการประกาศใช้ข้อกำหนด"}
+        message={
+          publishing
+            ? publishing.publish
+              ? `ต้องการประกาศใช้ข้อกำหนด "${publishing.row.number} ${publishing.row.name}" อย่างเป็นทางการหรือไม่?`
+              : `ต้องการยกเลิกการประกาศใช้ข้อกำหนด "${publishing.row.number} ${publishing.row.name}" หรือไม่?`
+            : ""
+        }
+        confirmLabel={publishing?.publish ? "ประกาศใช้" : "ยกเลิกประกาศใช้"}
+        cancelLabel={t.common.cancel}
+        confirmVariant={publishing?.publish ? "success" : "danger"}
+        pending={publishPending}
+        onConfirm={confirmPublish}
+        onCancel={() => setPublishing(undefined)}
       />
     </>
   );

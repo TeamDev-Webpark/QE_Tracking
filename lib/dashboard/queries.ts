@@ -4,6 +4,7 @@ import type { InspectionItem } from "@/lib/dashboard";
 import { documentStatus, isVisibleToEmployee } from "@/lib/documents";
 import { evaluateKpi, type KpiStatus } from "@/lib/kpi";
 import { displayStatus, NC_DISPLAY_STATUSES, todayInBangkok, type NcDisplayStatus } from "@/lib/nc";
+import { isChecklistPublished } from "@/lib/requirements";
 import type { DocumentStatus, User } from "@/lib/types";
 
 /**
@@ -18,6 +19,7 @@ export async function getInspectionItems(departmentId?: string): Promise<Inspect
   return db.checklists
     .filter((c) => !departmentId || c.departmentId === departmentId)
     .filter((c) => order.has(c.standardId))
+    .filter((c) => isChecklistPublished(c, db.requirements))
     .sort((a, b) => order.get(a.standardId)! - order.get(b.standardId)!)
     .map((c) => {
       const s = db.standards.find((s) => s.id === c.standardId)!;

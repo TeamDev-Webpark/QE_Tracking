@@ -41,7 +41,9 @@ export async function getRiskList(user: User) {
     })
     .sort((a, b) => b.score - a.score || b.code.localeCompare(a.code));
 
-  const requirements: RiskRequirementOption[] = db.requirements.map((r) => ({
+  const requirements: RiskRequirementOption[] = db.requirements
+    .filter((r) => Boolean(r.publishedAt))
+    .map((r) => ({
     id: r.id,
     standardId: r.standardId,
     number: r.number,

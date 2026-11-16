@@ -86,6 +86,40 @@ export async function saveRequirement(id: string | undefined, input: Requirement
   return { ok: true };
 }
 
+/** Publish or unpublish a requirement (ประกาศใช้ / ยกเลิกการประกาศใช้). Admin / QE only. */
+export async function setRequirementPublished(id: string, publish: boolean): Promise<ActionResult> {
+  const user = await getSessionUser();
+  if (!user || (user.role !== "admin" && user.role !== "qe")) return { ok: false, error: "forbidden" };
+
+  const db = await readDb();
+  const target = db.requirements.find((r) => r.id === id);
+  if (!target) return { ok: false, error: "notFound" };
+
+  await updateDb((db) => {
+    const r = db.requirements.find((r) => r.id === id);
+    if (!r) return;
+    if (publish) {
+      r.publishedAt = new Date().toISOString();
+      r.publishedBy = user.id;
+      db.auditLog.push(
+        auditEntry(user, "publish", { type: "requirement", id, label: `${r.number} ${r.name}` }, {
+          note: "ประกาศใช้ข้อกำหนด",
+        }),
+      );
+    } else {
+      delete r.publishedAt;
+      delete r.publishedBy;
+      db.auditLog.push(
+        auditEntry(user, "update", { type: "requirement", id, label: `${r.number} ${r.name}` }, {
+          note: "ยกเลิกการประกาศใช้ข้อกำหนด",
+        }),
+      );
+    }
+  });
+  refresh();
+  return { ok: true };
+}
+
 /** Delete a requirement. Admin / QE only. */
 export async function deleteRequirement(id: string): Promise<ActionResult> {
   const user = await getSessionUser();

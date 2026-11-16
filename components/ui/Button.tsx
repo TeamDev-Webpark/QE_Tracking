@@ -1,13 +1,14 @@
 import type { ButtonHTMLAttributes } from "react";
 import { cn } from "@/lib/cn";
 
-type Variant = "primary" | "secondary" | "danger";
+type Variant = "primary" | "secondary" | "danger" | "success";
 type Size = "sm" | "md";
 
 const variants: Record<Variant, string> = {
   primary: "bg-primary text-white hover:bg-primary-hover",
   secondary: "border border-border bg-surface text-text hover:bg-page",
   danger: "bg-danger text-white hover:opacity-90",
+  success: "bg-success text-white hover:opacity-90",
 };
 
 const sizes: Record<Size, string> = {

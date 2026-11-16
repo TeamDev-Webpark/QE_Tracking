@@ -40,7 +40,9 @@ export async function getTrainingList(user: User) {
     })
     .sort((a, b) => b.code.localeCompare(a.code));
 
-  const requirements: TrainingRequirementOption[] = db.requirements.map((r) => ({
+  const requirements: TrainingRequirementOption[] = db.requirements
+    .filter((r) => Boolean(r.publishedAt))
+    .map((r) => ({
     id: r.id,
     standardId: r.standardId,
     number: r.number,

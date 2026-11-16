@@ -25,6 +25,8 @@ export function InspectionResults({
   onTabChange,
   department,
   onDepartmentChange,
+  standard,
+  onStandardChange,
   ref,
 }: {
   items: InspectionItem[];
@@ -32,6 +34,8 @@ export function InspectionResults({
   onTabChange: (tab: ResultTab) => void;
   department?: string;
   onDepartmentChange?: (dept: string) => void;
+  standard?: string;
+  onStandardChange?: (std: string) => void;
   ref?: Ref<HTMLDivElement>;
 }) {
   const { lang, t } = useI18n();
@@ -39,9 +43,19 @@ export function InspectionResults({
 
   // Filter & Search states
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedStandard, setSelectedStandard] = useState<string>("all");
+  const [internalStandard, setInternalStandard] = useState<string>("all");
   const [internalDept, setInternalDept] = useState<string>("all");
   const [sortBy, setSortBy] = useState<SortOption>("clause");
+
+  const selectedStandard = standard !== undefined ? standard : internalStandard;
+  const handleStandardChange = (std: string) => {
+    if (onStandardChange) {
+      onStandardChange(std);
+    } else {
+      setInternalStandard(std);
+    }
+    setPage(1);
+  };
 
   const selectedDept = department !== undefined ? department : internalDept;
   const handleDeptChange = (dept: string) => {
@@ -155,7 +169,7 @@ export function InspectionResults({
 
   const handleResetFilters = () => {
     setSearchQuery("");
-    setSelectedStandard("all");
+    handleStandardChange("all");
     handleDeptChange("all");
     setSortBy("clause");
     setPage(1);
@@ -380,10 +394,7 @@ export function InspectionResults({
           <select
             id="standard-filter"
             value={selectedStandard}
-            onChange={(e) => {
-              setSelectedStandard(e.target.value);
-              setPage(1);
-            }}
+            onChange={(e) => handleStandardChange(e.target.value)}
             className="flex-1 sm:flex-none rounded-control border border-border bg-surface px-2.5 py-1.5 text-xs text-text font-medium focus:outline-none focus:ring-1 focus:ring-primary"
           >
             <option value="all">ทุกมาตรฐาน ISO ({deptFiltered.length})</option>

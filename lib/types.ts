@@ -131,6 +131,8 @@ export type Requirement = {
   departmentId: string;
   ownerId: string; // responsible user
   checklistIds: string[]; // linked checklist items (same standard)
+  publishedAt?: string; // ISO timestamp when declared effective
+  publishedBy?: string; // userId who declared it effective
 };
 
 /** Derived from the latest result of each linked checklist. */

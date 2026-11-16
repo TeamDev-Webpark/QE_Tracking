@@ -1,5 +1,6 @@
 import { connection } from "next/server";
 import { readDb } from "@/lib/db";
+import { isChecklistPublished } from "@/lib/requirements";
 
 /*
  * Server-side reads. `connection()` keeps these out of the static prerender,
@@ -11,7 +12,10 @@ export async function getStandardsWithStats(departmentId?: string) {
   const db = await readDb();
   return db.standards.map((s) => {
     const items = db.checklists.filter(
-      (c) => c.standardId === s.id && (!departmentId || c.departmentId === departmentId),
+      (c) =>
+        c.standardId === s.id &&
+        (!departmentId || c.departmentId === departmentId) &&
+        isChecklistPublished(c, db.requirements),
     );
     const latest = items.map((c) => c.results[0]).filter(Boolean);
     return {
@@ -39,10 +43,13 @@ export async function getStandardWithChecklists(id: string, departmentId?: strin
   return {
     standard,
     checklists: db.checklists.filter(
-      (c) => c.standardId === id && (!departmentId || c.departmentId === departmentId),
+      (c) =>
+        c.standardId === id &&
+        (!departmentId || c.departmentId === departmentId) &&
+        isChecklistPublished(c, db.requirements),
     ),
     requirements: db.requirements
-      .filter((r) => r.standardId === id && (!departmentId || r.departmentId === departmentId))
+      .filter((r) => Boolean(r.publishedAt) && r.standardId === id && (!departmentId || r.departmentId === departmentId))
       .map(({ id: reqId, number, name, departmentId: deptId, checklistIds }) => ({
         id: reqId,
         number,
