@@ -204,7 +204,7 @@ export function InspectionResults({
       key: "criteria",
       header: t.checklist.criteria,
       render: (i) => (
-        <span className="whitespace-nowrap font-medium text-xs">
+        <span className="whitespace-nowrap lg:whitespace-normal font-medium text-xs">
           {i.criteria ? formatCriteria(i.criteria) : t.checklist.typePassFail}
         </span>
       ),
@@ -245,9 +245,9 @@ export function InspectionResults({
     {
       key: "detail",
       header: "",
-      className: "w-px text-right whitespace-nowrap",
+      className: "text-right",
       render: (i) => (
-        <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
+        <div className="flex flex-wrap items-center justify-end gap-1.5">
           <Link
             href={`/standards/${i.standardId}?highlight=${i.id}&dept=${i.departmentId}`}
             className="inline-flex items-center gap-1 rounded-control border border-border/80 bg-surface px-2.5 py-1.5 text-xs font-semibold text-text hover:border-primary/50 hover:bg-primary-soft hover:text-primary transition-all shadow-2xs group"

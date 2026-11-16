@@ -121,8 +121,8 @@ export function ResultsBarChart({
           </button>
         </div>
       ) : asTable ? (
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[420px] text-sm tabular-nums">
+        <div className="overflow-x-auto lg:overflow-x-visible">
+          <table className="w-full min-w-[420px] lg:min-w-0 text-sm tabular-nums">
             <thead>
               <tr className="bg-page text-left">
                 <th className="rounded-l-xl px-3 py-2 font-bold">{groupLabel}</th>

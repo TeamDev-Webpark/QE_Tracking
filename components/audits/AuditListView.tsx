@@ -64,7 +64,7 @@ export function AuditListView({
       key: "code",
       header: "รหัส / ชื่องานตรวจ",
       render: (a) => (
-        <div className="min-w-[220px]">
+        <div className="min-w-[220px] lg:min-w-0">
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="font-mono text-xs font-semibold text-primary">{a.code}</span>
             <Badge tone="purple">{a.standardLabel}</Badge>

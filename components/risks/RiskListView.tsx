@@ -130,7 +130,7 @@ export function RiskListView({
       key: "title",
       header: t.risks.titleField,
       render: (r) => (
-        <div className="min-w-[220px]">
+        <div className="min-w-[220px] lg:min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-mono text-xs font-semibold text-primary">{r.code}</span>
             {r.clause && <Badge tone="purple">{r.clause}</Badge>}

@@ -64,14 +64,14 @@ export function DataTable<T>({
 
   return (
     <div className="space-y-3">
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[640px] text-left text-sm">
+      <div className="overflow-x-auto lg:overflow-x-visible">
+        <table className="w-full min-w-[640px] lg:min-w-0 text-left text-sm">
           <thead>
             <tr className="bg-page">
               {columns.map((c) => (
                 <th
                   key={c.key}
-                  className={cn("px-4 py-3 font-bold first:rounded-l-xl last:rounded-r-xl", c.className)}
+                  className={cn("px-3 py-3 xl:px-4 font-bold first:rounded-l-xl last:rounded-r-xl", c.className)}
                 >
                   {c.header}
                 </th>
@@ -89,7 +89,7 @@ export function DataTable<T>({
                 )}
               >
                 {columns.map((c) => (
-                  <td key={c.key} className={cn("px-4 py-4", c.className)}>
+                  <td key={c.key} className={cn("px-3 py-3.5 xl:px-4 xl:py-4", c.className)}>
                     {c.render(row)}
                   </td>
                 ))}

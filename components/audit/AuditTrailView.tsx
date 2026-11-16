@@ -385,8 +385,8 @@ export function AuditTrailView({ entries }: { entries: AuditEntry[] }) {
         {filtered.length === 0 ? (
           <p className="py-12 text-center text-sm text-text-muted">{entries.length === 0 ? t.audit.empty : t.audit.noMatch}</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px] text-left text-sm">
+          <div className="overflow-x-auto lg:overflow-x-visible">
+            <table className="w-full min-w-[760px] lg:min-w-0 text-left text-sm">
               <thead>
                 <tr className="bg-page">
                   <th className="rounded-l-xl px-4 py-3 font-bold">{t.audit.at}</th>

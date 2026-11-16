@@ -87,7 +87,7 @@ export function DocumentList({
     {
       key: "code",
       header: t.documents.code,
-      className: "w-44",
+      className: "w-40 lg:w-auto",
       render: (d) => (
         <div className="space-y-1">
           <div className="flex items-center gap-1.5">
@@ -162,11 +162,11 @@ export function DocumentList({
     {
       key: "actions",
       header: t.common.actions,
-      className: "w-px text-right",
+      className: "text-right",
       render: (d) => {
         const canDownload = d.status === "published" && (d.myQuota === null || d.myQuota.remaining > 0);
         return (
-          <div className="flex justify-end gap-1.5">
+          <div className="flex flex-wrap justify-end gap-1.5">
             <Button size="sm" variant="secondary" onClick={() => setPreviewDoc(d)} className="whitespace-nowrap">
               {t.documents.preview}
             </Button>
