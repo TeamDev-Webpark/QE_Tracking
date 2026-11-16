@@ -15,6 +15,7 @@ export const routeAccess: Record<string, Role[]> = {
   "/kpi": ["admin", "qe", "iso", "employee"],
   "/risks": ["admin", "qe", "iso", "employee"],
   "/training": ["admin", "qe", "iso", "employee"],
+  "/training-courses": ["admin", "qe", "iso", "employee"],
   "/audit-trail": ["admin", "qe", "iso"],
   "/reports": ["admin", "qe", "iso"],
   "/settings": ["admin", "qe"],

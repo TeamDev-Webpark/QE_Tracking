@@ -51,6 +51,7 @@ export const navigation: NavGroup[] = [
     items: [
       { labelKey: "risks", href: "/risks", icon: RiskIcon },
       { labelKey: "training", href: "/training", icon: TrainingIcon },
+      { labelKey: "trainingCourses", href: "/training-courses", icon: RequirementIcon },
       { labelKey: "kpi", href: "/kpi", icon: KpiIcon },
       { labelKey: "reports", href: "/reports", icon: ReportIcon },
       { labelKey: "auditTrail", href: "/audit-trail", icon: HistoryIcon },

@@ -261,9 +261,23 @@ export type RiskItem = {
 export type TrainingStatus = "planned" | "completed";
 export type TrainingHealth = "planned" | "valid" | "expiring" | "expired";
 
+export type TrainingCourse = {
+  id: string;
+  code: string; // e.g. "CRS-01"
+  name: string;
+  description?: string;
+  standardId?: string;
+  durationHours?: number;
+  validityMonths?: number; // e.g. 12 = 1 year
+  active: boolean;
+  updatedAt: string;
+  updatedBy: string;
+};
+
 export type TrainingRecord = {
   id: string;
   code: string; // e.g. "TRN-2026-01"
+  course?: string; // หลักสูตร
   title: string;
   userId: string;
   departmentId: string;

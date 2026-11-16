@@ -35,12 +35,14 @@ export function TrainingListView({
   standards,
   users,
   requirements,
+  activeCourses = [],
   nextCode,
 }: {
   records: TrainingView[];
   standards: { id: string; label: string }[];
-  users: { id: string; name: string; departmentId: string }[];
+  users: { id: string; name: string; position: string; departmentId: string }[];
   requirements: TrainingRequirementOption[];
+  activeCourses?: string[];
   nextCode: string;
 }) {
   const { t, lang } = useI18n();
@@ -52,22 +54,32 @@ export function TrainingListView({
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
   const [healthFilter, setHealthFilter] = useState<TrainingHealth | "all">("all");
+  const [courseFilter, setCourseFilter] = useState("all");
   const [deptFilter, setDeptFilter] = useState("all");
 
   const [modalRecord, setModalRecord] = useState<TrainingView | null | undefined>(undefined);
   const [deleting, setDeleting] = useState<TrainingView | null>(null);
   const [pending, startTransition] = useTransition();
 
+  const courseOptions = useMemo(() => {
+    const set = new Set<string>(activeCourses);
+    for (const r of records) {
+      if (r.course) set.add(r.course);
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b, "th"));
+  }, [records, activeCourses]);
+
   const filtered = useMemo(() => {
     const q = deferredSearch.trim().toLowerCase();
     return records.filter((r) => {
       if (healthFilter !== "all" && r.health !== healthFilter) return false;
+      if (courseFilter !== "all" && r.course !== courseFilter) return false;
       if (deptFilter !== "all" && r.departmentId !== deptFilter) return false;
       if (!q) return true;
-      const text = `${r.code} ${r.title} ${r.userName} ${r.trainer} ${r.clause} ${departmentName(r.departmentId, lang)}`.toLowerCase();
+      const text = `${r.code} ${r.course ?? ""} ${r.title} ${r.userName} ${r.userPosition} ${r.trainer} ${r.clause} ${departmentName(r.departmentId, lang)}`.toLowerCase();
       return text.includes(q);
     });
-  }, [records, healthFilter, deptFilter, deferredSearch, lang]);
+  }, [records, healthFilter, courseFilter, deptFilter, deferredSearch, lang]);
 
   const validCount = records.filter((r) => r.health === "valid").length;
   const expiringExpiredCount = records.filter((r) => r.health === "expiring" || r.health === "expired").length;
@@ -95,6 +107,7 @@ export function TrainingListView({
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-mono text-xs font-semibold text-primary">{r.code}</span>
             {r.clause && <Badge tone="purple">{r.clause}</Badge>}
+            {r.course && <Badge tone="primary">{r.course}</Badge>}
           </div>
           <p className="mt-0.5 font-semibold text-text">{r.title}</p>
           <p className="mt-0.5 text-xs text-text-muted">{r.trainer}</p>
@@ -103,10 +116,11 @@ export function TrainingListView({
     },
     {
       key: "employee",
-      header: t.training.employee,
+      header: `${t.training.employee} / ตำแหน่ง`,
       render: (r) => (
         <div className="whitespace-nowrap text-xs">
           <p className="font-semibold text-text">{r.userName}</p>
+          {r.userPosition && <p className="text-text-muted">{r.userPosition}</p>}
           <p className="text-text-muted">{departmentName(r.departmentId, lang)}</p>
         </div>
       ),
@@ -228,6 +242,22 @@ export function TrainingListView({
             ))}
           </select>
 
+          {courseOptions.length > 0 && (
+            <select
+              aria-label="หลักสูตร"
+              value={courseFilter}
+              onChange={(e) => setCourseFilter(e.target.value)}
+              className="h-9 rounded-lg border border-border/80 bg-surface px-3 text-xs font-semibold text-text cursor-pointer"
+            >
+              <option value="all">ทุกหลักสูตร</option>
+              {courseOptions.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          )}
+
           {canSeeAll && (
             <select
               aria-label={t.training.department}
@@ -260,6 +290,7 @@ export function TrainingListView({
         standards={standards}
         users={users}
         requirements={requirements}
+        courseOptions={courseOptions}
         nextCode={nextCode}
         onClose={() => setModalRecord(undefined)}
       />

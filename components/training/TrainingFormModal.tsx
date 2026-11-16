@@ -17,14 +17,16 @@ export function TrainingFormModal({
   standards,
   users,
   requirements,
+  courseOptions = [],
   nextCode,
   onClose,
 }: {
   open: boolean;
   record: TrainingView | null;
   standards: { id: string; label: string }[];
-  users: { id: string; name: string; departmentId: string }[];
+  users: { id: string; name: string; position: string; departmentId: string }[];
   requirements: TrainingRequirementOption[];
+  courseOptions?: string[];
   nextCode: string;
   onClose: () => void;
 }) {
@@ -36,24 +38,33 @@ export function TrainingFormModal({
       standards={standards}
       users={users}
       requirements={requirements}
+      courseOptions={courseOptions}
       nextCode={nextCode}
       onClose={onClose}
     />
   );
 }
 
+const DEFAULT_COURSES = [
+  "ISO 9001 Awareness",
+  "Quality Policy & Quality Objectives",
+  "Document Control",
+];
+
 function TrainingFormInner({
   record,
   standards,
   users,
   requirements,
+  courseOptions,
   nextCode,
   onClose,
 }: {
   record: TrainingView | null;
   standards: { id: string; label: string }[];
-  users: { id: string; name: string; departmentId: string }[];
+  users: { id: string; name: string; position: string; departmentId: string }[];
   requirements: TrainingRequirementOption[];
+  courseOptions: string[];
   nextCode: string;
   onClose: () => void;
 }) {
@@ -62,6 +73,7 @@ function TrainingFormInner({
   const [pending, startTransition] = useTransition();
 
   const [code, setCode] = useState(record?.code ?? nextCode);
+  const [course, setCourse] = useState(record?.course ?? "");
   const [title, setTitle] = useState(record?.title ?? "");
   const [userId, setUserId] = useState(record?.userId ?? users[0]?.id ?? "");
   const [departmentId, setDepartmentId] = useState(record?.departmentId ?? users[0]?.departmentId ?? departments[0]?.id ?? "");
@@ -91,6 +103,7 @@ function TrainingFormInner({
     startTransition(async () => {
       const res = await saveTraining(record?.id ?? null, {
         code,
+        course,
         title,
         userId,
         departmentId,
@@ -145,12 +158,37 @@ function TrainingFormInner({
           </Field>
         </div>
 
-        <Field htmlFor="trn-title" label={t.training.titleField} required error={err("title")}>
-          <Input id="trn-title" value={title} onChange={(e) => setTitle(e.target.value)} invalid={!!fieldErrors.title} />
-        </Field>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field htmlFor="trn-course" label="หลักสูตร" hint="เลือกจากรายการหรือพิมพ์ชื่อหลักสูตรใหม่">
+            <Input
+              id="trn-course"
+              list="training-course-options"
+              value={course}
+              onChange={(e) => setCourse(e.target.value)}
+              placeholder="เช่น หลักสูตรระบบบริหารคุณภาพ ISO 9001"
+            />
+            <datalist id="training-course-options">
+              {Array.from(new Set([...courseOptions, ...DEFAULT_COURSES])).map((c) => (
+                <option key={c} value={c} />
+              ))}
+            </datalist>
+          </Field>
+          <Field htmlFor="trn-title" label={t.training.titleField} required error={err("title")}>
+            <Input id="trn-title" value={title} onChange={(e) => setTitle(e.target.value)} invalid={!!fieldErrors.title} />
+          </Field>
+        </div>
 
         <div className="grid gap-4 sm:grid-cols-3">
-          <Field htmlFor="trn-user" label={t.training.employee} required error={err("userId")}>
+          <Field
+            htmlFor="trn-user"
+            label={t.training.employee}
+            required
+            hint={(() => {
+              const selected = users.find((u) => u.id === userId);
+              return selected?.position ? `ตำแหน่ง: ${selected.position}` : undefined;
+            })()}
+            error={err("userId")}
+          >
             <Select
               id="trn-user"
               value={userId}
@@ -165,7 +203,7 @@ function TrainingFormInner({
               <option value="">{t.training.selectEmployee}</option>
               {users.map((u) => (
                 <option key={u.id} value={u.id}>
-                  {u.name}
+                  {u.name} ({u.position})
                 </option>
               ))}
             </Select>

@@ -9,6 +9,7 @@ import { displayName } from "@/lib/user";
 
 export type TrainingView = TrainingRecord & {
   userName: string;
+  userPosition: string;
   standardLabel: string;
   health: TrainingHealth;
 };
@@ -34,6 +35,7 @@ export async function getTrainingList(user: User) {
       return {
         ...tr,
         userName: trainee ? displayName(trainee, "th") : "-",
+        userPosition: trainee?.position ?? "",
         standardLabel: tr.standardId ? (stdById.get(tr.standardId) ?? tr.standardId) : "-",
         health: trainingHealth(tr, today),
       };
@@ -54,8 +56,14 @@ export async function getTrainingList(user: User) {
   return {
     records,
     standards: db.standards.map((s) => ({ id: s.id, label: `${s.code}:${s.version}` })),
-    users: getUsers().map((u) => ({ id: u.id, name: displayName(u, "th"), departmentId: u.departmentId })),
+    users: getUsers().map((u) => ({
+      id: u.id,
+      name: displayName(u, "th"),
+      position: u.position,
+      departmentId: u.departmentId,
+    })),
     requirements,
+    activeCourses: db.trainingCourses.filter((c) => c.active).map((c) => c.name),
     nextCode: nextTrainingCode(db.training.map((tr) => tr.code)),
   };
 }

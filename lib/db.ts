@@ -8,6 +8,7 @@ import { seedNonconformities } from "@/data/nonconformities";
 import { seedKpis } from "@/data/kpis";
 import { seedRisks } from "@/data/risks";
 import { seedTraining } from "@/data/training";
+import { seedTrainingCourses } from "@/data/trainingCourses";
 import { seedAudits } from "@/data/audits";
 import { users as seedUsers } from "@/data/users";
 import { buildSeedAuditLog } from "@/data/auditLog";
@@ -22,6 +23,7 @@ import type {
   Requirement,
   RiskItem,
   SystemSettings,
+  TrainingCourse,
   TrainingRecord,
   User,
 } from "./types";
@@ -51,6 +53,7 @@ export type DemoDb = {
   kpis: Kpi[];
   risks: RiskItem[];
   training: TrainingRecord[];
+  trainingCourses: TrainingCourse[];
   audits: InternalAudit[];
   users: User[];
   settings: SystemSettings;
@@ -69,6 +72,7 @@ function buildSeedDb(): DemoDb {
     kpis: structuredClone(seedKpis),
     risks: structuredClone(seedRisks),
     training: structuredClone(seedTraining),
+    trainingCourses: structuredClone(seedTrainingCourses),
     audits: structuredClone(seedAudits),
     users: structuredClone(seedUsers).map((u) => ({ ...u, active: u.active ?? true })),
     settings: structuredClone(DEFAULT_SETTINGS),
@@ -88,6 +92,7 @@ export async function readDb(): Promise<DemoDb> {
       kpis: parsed.kpis ?? structuredClone(seedKpis),
       risks: parsed.risks ?? structuredClone(seedRisks),
       training: parsed.training ?? structuredClone(seedTraining),
+      trainingCourses: parsed.trainingCourses ?? structuredClone(seedTrainingCourses),
       audits: parsed.audits ?? structuredClone(seedAudits),
       users: parsed.users?.length ? parsed.users : structuredClone(seedUsers).map((u) => ({ ...u, active: u.active ?? true })),
       settings: parsed.settings ? { ...DEFAULT_SETTINGS, ...parsed.settings } : structuredClone(DEFAULT_SETTINGS),

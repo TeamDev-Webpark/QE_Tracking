@@ -22,6 +22,7 @@ const isValidYmd = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN
 
 export type SaveTrainingInput = {
   code?: string;
+  course?: string;
   title: string;
   userId: string;
   departmentId: string;
@@ -54,6 +55,7 @@ export async function saveTraining(id: string | null, input: SaveTrainingInput):
 
   const data = {
     code,
+    course: clean(input.course) || undefined,
     title: clean(input.title),
     userId: clean(input.userId),
     departmentId: clean(input.departmentId),
@@ -92,6 +94,7 @@ export async function saveTraining(id: string | null, input: SaveTrainingInput):
       if (!target) return;
       const changes = diffFields(target, data, [
         "code",
+        "course",
         "title",
         "userId",
         "departmentId",
