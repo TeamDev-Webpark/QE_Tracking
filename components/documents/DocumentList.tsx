@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useDeferredValue, useMemo, useState } from "react";
 import { Badge, Button, Card, DataTable, PageHeader, type Column } from "@/components/ui";
-import { PlusIcon, SearchIcon } from "@/components/icons";
+import { DownloadIcon, FormIcon, InfoIcon, PlusIcon, SearchIcon } from "@/components/icons";
 import { useI18n } from "@/components/providers/I18nProvider";
 import { useSessionUser } from "@/components/providers/SessionProvider";
 import { departments } from "@/data/departments";
@@ -171,39 +171,35 @@ export function DocumentList({
       render: (d) => {
         const canDownload = d.status === "published" && (d.myQuota === null || d.myQuota.remaining > 0);
         return (
-          <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => setPreviewDoc(d)}
-              className="h-8 px-2.5 text-xs whitespace-nowrap"
-            >
-              {t.documents.preview}
-            </Button>
+          <div className="flex items-center justify-end gap-2 whitespace-nowrap">
             <button
               type="button"
               onClick={() => setFormModalDoc({ doc: d, mode: "fill" })}
-              className="inline-flex h-8 items-center justify-center gap-1 rounded-control border border-sky-200 bg-white px-2.5 text-xs font-semibold text-sky-600 hover:bg-sky-50 hover:border-sky-300 hover:text-sky-700 transition-colors whitespace-nowrap"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-sky-200 bg-white text-sky-600 hover:bg-sky-50 hover:border-sky-300 hover:text-sky-700 transition-all cursor-pointer shadow-xs hover:scale-105 active:scale-95"
               title="เปิดกรอกแบบฟอร์ม / ดูประวัติบันทึก"
+              aria-label="เปิดกรอกแบบฟอร์ม / ดูประวัติบันทึก"
             >
-              <span>📝</span>
-              <span>ฟอร์ม</span>
+              <FormIcon width={19} height={19} />
             </button>
             <Link
               href={`/documents/${d.id}`}
-              className="inline-flex h-8 items-center rounded-control border border-border bg-surface px-2.5 text-xs font-semibold whitespace-nowrap hover:bg-page transition-colors"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-surface text-text hover:bg-page hover:text-primary hover:border-primary/40 transition-all shadow-xs hover:scale-105 active:scale-95"
+              title={t.documents.view}
+              aria-label={t.documents.view}
             >
-              {t.documents.view}
+              <InfoIcon width={19} height={19} />
             </Link>
             {d.status === "published" && (
-              <Button
-                size="sm"
+              <button
+                type="button"
                 onClick={() => download(d.id)}
                 disabled={pending || !canDownload}
-                className="h-8 px-2.5 text-xs whitespace-nowrap"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-white hover:bg-primary-hover disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer shadow-xs hover:scale-105 active:scale-95"
+                title={canDownload ? t.documents.download : t.documents.noRightsLeft}
+                aria-label={t.documents.download}
               >
-                {t.documents.download}
-              </Button>
+                <DownloadIcon width={19} height={19} />
+              </button>
             )}
           </div>
         );

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { Badge, Button, Card, CardTitle, ConfirmDialog, DataTable, Input, PageHeader, type Column, useToast } from "@/components/ui";
-import { ArrowLeftIcon, EditIcon, PlusIcon, SearchIcon, TrashIcon } from "@/components/icons";
+import { ArrowLeftIcon, DownloadIcon, EditIcon, EyeIcon, FormIcon, PlusIcon, SearchIcon, TrashIcon } from "@/components/icons";
 import { useI18n } from "@/components/providers/I18nProvider";
 import { useSessionUser } from "@/components/providers/SessionProvider";
 import { getUserById } from "@/data";
@@ -241,25 +241,28 @@ export function DocumentDetail({
         title={`${doc.code} · ${doc.title}`}
         description={`${doc.standardLabel} · ${departmentName(doc.departmentId, lang)}${doc.clause ? ` · ข้อ ${doc.clause}` : ""}`}
         actions={
-          <>
+          <div className="flex flex-wrap items-center gap-2">
             {/* Active Form Designer & Filler Buttons */}
-            <button
-              type="button"
+            <Button
+              variant="secondary"
               onClick={() => setDialog({ kind: "filler" })}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-control border border-sky-300 bg-white px-4 text-sm font-semibold text-sky-700 hover:bg-sky-50 hover:border-sky-400 hover:text-sky-800 transition-colors shadow-2xs"
+              className="font-semibold text-primary hover:text-primary-hover hover:border-primary/40 shadow-2xs"
             >
-              📝 กรอกแบบฟอร์ม (Fill Form)
-            </button>
+              <FormIcon width={16} height={16} />
+              กรอกแบบฟอร์ม
+            </Button>
             {canManage && active && (
-              <button
-                type="button"
+              <Button
+                variant="secondary"
                 onClick={() => setDialog({ kind: "designer" })}
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-control border border-sky-400 bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700 transition-colors shadow-2xs"
+                className="font-semibold hover:border-primary/40 hover:text-primary shadow-2xs"
               >
-                🎨 ออกแบบฟอร์ม (Designer)
-              </button>
+                <EditIcon width={16} height={16} />
+                ออกแบบฟอร์ม
+              </Button>
             )}
             <Button variant="secondary" onClick={() => setDialog({ kind: "preview" })}>
+              <EyeIcon width={16} height={16} />
               {t.documents.preview}
             </Button>
             {isPrivileged && active && doc.draft?.status === "draft" && (
@@ -296,12 +299,20 @@ export function DocumentDetail({
                   </Button>
                 )}
                 {doc.canDeleteDraft ? (
-                  <Button variant="danger" onClick={() => setDialog({ kind: "deleteDraft" })}>
+                  <Button
+                    variant="secondary"
+                    onClick={() => setDialog({ kind: "deleteDraft" })}
+                    className="border-danger/30 text-danger hover:bg-danger-soft/50 hover:border-danger/50"
+                  >
                     <TrashIcon width={16} height={16} />
                     {t.documents.deleteDraft}
                   </Button>
                 ) : (
-                  <Button variant="danger" onClick={() => setDialog({ kind: "cancel" })}>
+                  <Button
+                    variant="secondary"
+                    onClick={() => setDialog({ kind: "cancel" })}
+                    className="border-danger/30 text-danger hover:bg-danger-soft/50 hover:border-danger/50"
+                  >
                     {t.documents.cancel}
                   </Button>
                 )}
@@ -309,10 +320,11 @@ export function DocumentDetail({
             )}
             {doc.status === "published" && (
               <Button onClick={() => download(doc.id)} disabled={downloading || !canDownload}>
+                <DownloadIcon width={16} height={16} />
                 {downloading ? t.documents.downloading : t.documents.download}
               </Button>
             )}
-          </>
+          </div>
         }
       />
 
@@ -331,20 +343,18 @@ export function DocumentDetail({
       )}
 
       {/* E-Form Quality Record & Form Designer Banner */}
-      <div className="mb-6 overflow-hidden rounded-xl border border-sky-100 bg-white p-4.5 shadow-xs dark:border-sky-900/40 dark:bg-surface">
+      <div className="mb-6 overflow-hidden rounded-xl border border-border bg-surface p-4.5 shadow-xs">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-xl text-sky-600 border border-sky-100 dark:bg-sky-950/60 dark:border-sky-800">
-              📋
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary border border-primary/20 shadow-2xs">
+              <FormIcon width={22} height={22} />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-sm font-semibold text-foreground">
+                <h3 className="text-sm font-bold text-text">
                   แบบฟอร์มบันทึกคุณภาพอิเล็กทรอนิกส์ (E-Form & Active Designer)
                 </h3>
-                <span className="rounded-full bg-sky-50 px-2.5 py-0.5 text-[10px] font-bold text-sky-700 border border-sky-200/80 dark:bg-sky-950/60 dark:text-sky-300">
-                  ISO 9001: 7.5.3
-                </span>
+                <Badge tone="primary">ISO 9001: 7.5.3</Badge>
               </div>
               <p className="mt-0.5 text-xs text-text-muted">
                 ลากวาง (Drag & Drop) ออกแบบช่องกรอกข้อมูล, บันทึกผลการปฏิบัติงาน, และดาวน์โหลด PDF ควบคุม
@@ -354,17 +364,19 @@ export function DocumentDetail({
           <div className="flex flex-wrap items-center gap-2">
             <Button
               onClick={() => setDialog({ kind: "filler" })}
-              className="bg-sky-600 hover:bg-sky-700 text-white font-semibold text-xs shadow-xs"
+              className="text-xs font-semibold shadow-xs"
             >
-              📝 กรอกแบบฟอร์ม / ดูประวัติ
+              <FormIcon width={15} height={15} />
+              กรอกแบบฟอร์ม / ดูประวัติ
             </Button>
             {canManage && active && (
               <Button
                 variant="secondary"
                 onClick={() => setDialog({ kind: "designer" })}
-                className="text-xs font-semibold border-sky-200 hover:bg-sky-50 text-sky-700 dark:border-sky-800 dark:text-sky-300 dark:hover:bg-sky-950 transition"
+                className="text-xs font-semibold hover:border-primary/40 hover:text-primary transition-colors shadow-2xs"
               >
-                🎨 ออกแบบฟอร์ม (Designer)
+                <EditIcon width={15} height={15} />
+                ออกแบบฟอร์ม (Designer)
               </Button>
             )}
           </div>

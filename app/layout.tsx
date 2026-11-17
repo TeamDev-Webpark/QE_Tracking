@@ -18,6 +18,14 @@ export const metadata: Metadata = {
     template: "%s | QE Tracking System",
   },
   description: "QE Tracking System – Demo V.1",
+  icons: {
+    icon: [
+      { url: "/logo-icon.png", type: "image/png" },
+      { url: "/favicon.ico", sizes: "32x32" },
+    ],
+    shortcut: "/logo-icon.png",
+    apple: "/logo-icon.png",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -26,6 +34,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="th"
       className={`${nunitoSans.variable} ${notoSansThai.variable} h-full antialiased`}
     >
+      <head>
+        <link rel="icon" href="/logo-icon.png" type="image/png" />
+        <link rel="shortcut icon" href="/logo-icon.png" type="image/png" />
+        <link rel="apple-touch-icon" href="/logo-icon.png" />
+      </head>
       <body className="min-h-full font-sans">{children}</body>
     </html>
   );

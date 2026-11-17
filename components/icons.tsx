@@ -197,3 +197,31 @@ export const TrainingIcon = (p: IconProps) => (
     <path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5" />
   </Base>
 );
+
+export const EyeIcon = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+    <circle cx="12" cy="12" r="3" />
+  </Base>
+);
+
+export const FormIcon = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+    <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
+  </Base>
+);
+
+export const InfoIcon = (p: IconProps) => (
+  <Base {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 16v-4M12 8h.01" />
+  </Base>
+);
+
+export const DownloadIcon = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+    <path d="m7 10 5 5 5-5M12 15V3" />
+  </Base>
+);
