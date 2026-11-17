@@ -60,6 +60,14 @@ export function buildSeedAuditLog(): AuditEntry[] {
           note: v.changeNote,
         });
       }
+      if (v.reviewedAt && v.reviewedBy) {
+        add(v.reviewedAt, v.reviewedBy, "update", "document", d.id, d.code, {
+          changes: [
+            { field: "version", from: `${v.version} (draft)`, to: `${v.version} (pending_review)` },
+            ...(v.reviewNote ? [{ field: "reviewNote", from: "", to: v.reviewNote }] : []),
+          ],
+        });
+      }
       if (v.publishedAt && v.publishedBy) {
         add(v.publishedAt, v.publishedBy, "publish", "document", d.id, d.code, {
           changes: [{ field: "publishedVersion", from: v.version > 1 ? String(v.version - 1) : "", to: String(v.version) }],

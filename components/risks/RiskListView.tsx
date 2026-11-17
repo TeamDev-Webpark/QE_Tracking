@@ -33,6 +33,13 @@ const LEVEL_TONE: Record<RiskLevel, BadgeTone> = {
   critical: "danger",
 };
 
+const LEVEL_SHORT: Record<RiskLevel, string> = {
+  low: "ต่ำ",
+  medium: "ปานกลาง",
+  high: "สูง",
+  critical: "วิกฤต",
+};
+
 type QuickFocus = "all" | "high_critical" | "mitigating" | "monitored_closed";
 
 export function RiskListView({
@@ -50,7 +57,8 @@ export function RiskListView({
 }) {
   const { t, lang } = useI18n();
   const toast = useToast();
-  const role = useSessionUser().role;
+  const user = useSessionUser();
+  const role = user.role;
   const canManage = role === "admin" || role === "qe";
   const canSeeAll = role === "admin" || role === "qe" || role === "iso";
 
@@ -139,6 +147,18 @@ export function RiskListView({
           {r.mitigationPlan && (
             <p className="mt-0.5 text-xs text-text-muted line-clamp-1">{r.mitigationPlan}</p>
           )}
+          {r.reviewNote && (
+            <p
+              className={cn(
+                "mt-1 inline-block rounded px-2 py-0.5 text-[11px] font-medium",
+                r.reviewNote.startsWith("[ตีกลับแก้ไข]")
+                  ? "bg-danger-soft text-danger"
+                  : "bg-page text-text-muted",
+              )}
+            >
+              {r.reviewNote}
+            </p>
+          )}
         </div>
       ),
     },
@@ -155,12 +175,33 @@ export function RiskListView({
     {
       key: "score",
       header: t.risks.level,
-      render: (r) => (
-        <div className="flex items-center gap-2 whitespace-nowrap">
-          <Badge tone={LEVEL_TONE[r.level]}>{t.riskLevel[r.level]}</Badge>
-          <span className="text-xs text-text-muted tabular-nums">({r.score} คะแนน)</span>
-        </div>
-      ),
+      render: (r) => {
+        const hasAfter = r.residualScore !== undefined && r.residualLevel !== undefined;
+        const activeScore = hasAfter ? r.residualScore! : r.initialScore;
+        return (
+          <div
+            className="flex items-center gap-2.5 whitespace-nowrap"
+            title={
+              hasAfter
+                ? `ก่อนแก้ไข: ${r.initialScore} คะแนน (${r.likelihood}×${r.impact}) → หลังแก้ไข: ${r.residualScore} คะแนน (${r.residualLikelihood}×${r.residualImpact})`
+                : `คะแนนตั้งต้น: ${r.initialScore} คะแนน (โอกาส ${r.likelihood} × ความรุนแรง ${r.impact})`
+            }
+          >
+            <Badge tone={LEVEL_TONE[r.level]} className="w-[4.5rem] justify-center">
+              {LEVEL_SHORT[r.level]}
+            </Badge>
+            <span className="w-[4.5rem] text-xs tabular-nums">
+              <strong className="text-sm font-bold text-text">{activeScore}</strong>{" "}
+              <span className="text-text-muted">คะแนน</span>
+            </span>
+            {hasAfter && r.residualScore! < r.initialScore && (
+              <span className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 tabular-nums">
+                ↓ จาก {r.initialScore}
+              </span>
+            )}
+          </div>
+        );
+      },
     },
     {
       key: "reviewDate",
@@ -175,44 +216,81 @@ export function RiskListView({
       render: (r) => (
         <RiskStatusDropdown
           value={r.status}
-          disabled={pending}
-          readOnly={!canManage}
-          disabledStatuses={r.status === "open" ? ["closed"] : []}
-          disabledReason="ต้องเปลี่ยนเป็น กำลังแก้ไข หรือ ติดตามผล ก่อนปิดเรื่อง"
-          onChange={(next) => handleQuickStatus(r, next)}
+          readOnly
           ariaLabel={`${t.risks.status} ${r.code}`}
         />
       ),
     },
-    ...(canManage
-      ? [
-          {
-            key: "actions",
-            header: "",
-            className: "w-px text-right",
-            render: (r: RiskView) => (
-              <div className="flex items-center justify-end gap-1">
+    {
+      key: "actions",
+      header: "การดำเนินการ",
+      className: "w-px text-right",
+      render: (r: RiskView) => {
+        const isDeptActor =
+          (role === "employee" && r.departmentId === user.departmentId) || canManage;
+
+        return (
+          <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
+            {r.status === "open" && isDeptActor && (
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={pending}
+                onClick={() => handleQuickStatus(r, "mitigating")}
+              >
+                เริ่มแก้ไข
+              </Button>
+            )}
+
+            {r.status === "mitigating" && isDeptActor && (
+              <Button
+                size="sm"
+                disabled={pending}
+                onClick={() => setReviewing({ risk: r, targetStatus: "monitored" })}
+              >
+                ส่งผลแก้ไข
+              </Button>
+            )}
+
+            {r.status === "monitored" &&
+              (canManage ? (
+                <Button
+                  size="sm"
+                  disabled={pending}
+                  onClick={() => setReviewing({ risk: r, targetStatus: "closed" })}
+                >
+                  ตรวจปิดเรื่อง
+                </Button>
+              ) : (
+                <span className="px-1.5 text-[11px] font-medium text-text-muted">รอ QE ตรวจปิดเรื่อง</span>
+              ))}
+
+            {canManage && (
+              <>
                 <button
                   type="button"
                   onClick={() => setModalRisk(r)}
-                  className="rounded-control p-2 text-text-muted hover:bg-page hover:text-primary"
+                  className="rounded-control p-2 text-text-muted hover:bg-page hover:text-primary cursor-pointer"
                   aria-label={t.common.edit}
+                  title={t.common.edit}
                 >
                   <EditIcon width={16} height={16} />
                 </button>
                 <button
                   type="button"
                   onClick={() => setDeleting(r)}
-                  className="rounded-control p-2 text-text-muted hover:bg-danger-soft hover:text-danger"
+                  className="rounded-control p-2 text-text-muted hover:bg-danger-soft hover:text-danger cursor-pointer"
                   aria-label={t.common.delete}
+                  title={t.common.delete}
                 >
                   <TrashIcon width={16} height={16} />
                 </button>
-              </div>
-            ),
-          },
-        ]
-      : []),
+              </>
+            )}
+          </div>
+        );
+      },
+    },
   ];
 
   const toggleFocus = (target: QuickFocus) => setFocus((prev) => (prev === target ? "all" : target));

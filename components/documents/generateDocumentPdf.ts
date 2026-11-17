@@ -203,25 +203,25 @@ export async function generateDocumentPdf(doc: DocumentPdfMeta, fileName: string
               <!-- Column 1: Prepared by -->
               <td style="padding: 26px 8px 8px; border-right: 1px solid #1e293b; vertical-align: bottom;">
                 <div style="border-bottom: 1px dashed #64748b; width: 75%; margin: 0 auto 5px;"></div>
-                <div style="font-weight: 800; color: #0f172a; font-size: 11.5px;">( ${escapeHtml(doc.owner)} )</div>
-                <div style="color: #475569; font-size: 10px; margin-top: 2px;">เจ้าของเอกสาร / ผู้จัดทำ</div>
-                <div style="color: #64748b; font-size: 9.5px; margin-top: 1px;">วันที่: ${effectiveThai}</div>
+                <div style="font-weight: 800; color: #0f172a; font-size: 11.5px;">( ${escapeHtml(doc.preparedBy)} )</div>
+                <div style="color: #475569; font-size: 10px; margin-top: 2px;">${escapeHtml(doc.preparedPosition)}</div>
+                <div style="color: #64748b; font-size: 9.5px; margin-top: 1px;">วันที่: ${formatThaiDate(doc.preparedDate)}</div>
               </td>
 
               <!-- Column 2: Reviewed by -->
               <td style="padding: 26px 8px 8px; border-right: 1px solid #1e293b; vertical-align: bottom;">
                 <div style="border-bottom: 1px dashed #64748b; width: 75%; margin: 0 auto 5px;"></div>
-                <div style="font-weight: 800; color: #0f172a; font-size: 11.5px;">( เจ้าหน้าที่ควบคุมเอกสาร )</div>
-                <div style="color: #475569; font-size: 10px; margin-top: 2px;">เจ้าหน้าที่ควบคุมเอกสาร (DCC)</div>
-                <div style="color: #64748b; font-size: 9.5px; margin-top: 1px;">วันที่: ${effectiveThai}</div>
+                <div style="font-weight: 800; color: #0f172a; font-size: 11.5px;">( ${escapeHtml(doc.reviewedBy)} )</div>
+                <div style="color: #475569; font-size: 10px; margin-top: 2px;">${escapeHtml(doc.reviewedPosition)}</div>
+                <div style="color: #64748b; font-size: 9.5px; margin-top: 1px;">วันที่: ${formatThaiDate(doc.reviewedDate)}</div>
               </td>
 
               <!-- Column 3: Approved by -->
               <td style="padding: 26px 8px 8px; vertical-align: bottom;">
                 <div style="border-bottom: 1px dashed #64748b; width: 75%; margin: 0 auto 5px;"></div>
-                <div style="font-weight: 800; color: #0f172a; font-size: 11.5px;">( ตัวแทนฝ่ายบริหารด้านคุณภาพ )</div>
-                <div style="color: #475569; font-size: 10px; margin-top: 2px;">ผู้จัดการฝ่ายประกันคุณภาพ (QMR)</div>
-                <div style="color: #64748b; font-size: 9.5px; margin-top: 1px;">วันที่: ${effectiveThai}</div>
+                <div style="font-weight: 800; color: #0f172a; font-size: 11.5px;">( ${escapeHtml(doc.approvedBy)} )</div>
+                <div style="color: #475569; font-size: 10px; margin-top: 2px;">${escapeHtml(doc.approvedPosition)}</div>
+                <div style="color: #64748b; font-size: 9.5px; margin-top: 1px;">วันที่: ${formatThaiDate(doc.approvedDate)}</div>
               </td>
             </tr>
           </table>

@@ -19,22 +19,33 @@ import type { DocumentRequirementOption, DocumentView, StandardOption } from "@/
 import { departmentName, formatDate, formatDateTime } from "@/lib/format";
 import type { DocumentVersion } from "@/lib/types";
 import { displayName } from "@/lib/user";
-import { AdjustLimitDialog, CancelDocumentDialog, NewVersionDialog, ReviewDocumentDialog } from "./DocumentDialogs";
+import {
+  AdjustLimitDialog,
+  CancelDocumentDialog,
+  NewVersionDialog,
+  ReviewDocumentDialog,
+  ReviewDraftVersionDialog,
+} from "./DocumentDialogs";
 import { DocumentFormModal } from "./DocumentFormModal";
 import { DocumentPreviewModal } from "./DocumentPreviewModal";
 import { DownloadMessage, QuotaText } from "./DownloadParts";
 import { DocumentStatusBadge, DocumentTypeBadge, ReviewStatusBadge, VersionStatusBadge } from "./StatusBadges";
 import { useDownload } from "./useDownload";
+import { DocumentFormDesigner } from "./designer/DocumentFormDesigner";
+import { DocumentFormFiller } from "./designer/DocumentFormFiller";
 
 type Dialog =
   | { kind: "edit" }
   | { kind: "preview" }
   | { kind: "newVersion" }
+  | { kind: "reviewDraft" }
   | { kind: "publish" }
   | { kind: "cancel" }
   | { kind: "discardDraft" }
   | { kind: "deleteDraft" }
   | { kind: "review" }
+  | { kind: "designer" }
+  | { kind: "filler" }
   | { kind: "adjust"; userId: string }
   | { kind: "reset"; userId: string };
 
@@ -96,19 +107,37 @@ export function DocumentDetail({
 
   const versionColumns: Column<DocumentVersion>[] = [
     { key: "v", header: t.documents.version, className: "w-20 font-bold", render: (v) => `v${v.version}` },
-    { key: "note", header: t.documents.changeNote, render: (v) => v.changeNote },
+    {
+      key: "note",
+      header: t.documents.changeNote,
+      render: (v) => (
+        <div>
+          <p>{v.changeNote}</p>
+          {v.reviewNote && (
+            <p className="mt-1 text-xs text-text-muted">
+              <span className="font-semibold text-text">ความเห็นผู้ทบทวน:</span> {v.reviewNote}
+            </p>
+          )}
+        </div>
+      ),
+    },
     { key: "status", header: t.documents.status, render: (v) => <VersionStatusBadge status={v.status} /> },
     {
       key: "dates",
-      header: `${t.documents.createdAt} / ${t.documents.publishedAt}`,
+      header: "ผู้จัดทำ / ผู้ทบทวน / ผู้อนุมัติ",
       render: (v) => (
-        <div className="text-xs whitespace-nowrap text-text-muted">
+        <div className="space-y-0.5 text-xs whitespace-nowrap text-text-muted">
           <p>
-            {formatDateTime(v.createdAt, lang)} · {userName(v.createdBy)}
+            <span className="font-semibold text-text">จัดทำ:</span> {userName(v.createdBy)} · {formatDateTime(v.createdAt, lang)}
           </p>
+          {v.reviewedAt && (
+            <p>
+              <span className="font-semibold text-text">ทบทวน:</span> {userName(v.reviewedBy)} · {formatDateTime(v.reviewedAt, lang)}
+            </p>
+          )}
           {v.publishedAt && (
             <p className="font-semibold text-text">
-              {t.documents.publishedAt} {formatDateTime(v.publishedAt, lang)} · {userName(v.publishedBy)}
+              อนุมัติประกาศใช้: {userName(v.publishedBy)} · {formatDateTime(v.publishedAt, lang)}
             </p>
           )}
         </div>
@@ -213,9 +242,31 @@ export function DocumentDetail({
         description={`${doc.standardLabel} · ${departmentName(doc.departmentId, lang)}${doc.clause ? ` · ข้อ ${doc.clause}` : ""}`}
         actions={
           <>
+            {/* Active Form Designer & Filler Buttons */}
+            <button
+              type="button"
+              onClick={() => setDialog({ kind: "filler" })}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-control border border-sky-300 bg-white px-4 text-sm font-semibold text-sky-700 hover:bg-sky-50 hover:border-sky-400 hover:text-sky-800 transition-colors shadow-2xs"
+            >
+              📝 กรอกแบบฟอร์ม (Fill Form)
+            </button>
+            {canManage && active && (
+              <button
+                type="button"
+                onClick={() => setDialog({ kind: "designer" })}
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-control border border-sky-400 bg-sky-600 px-4 text-sm font-semibold text-white hover:bg-sky-700 transition-colors shadow-2xs"
+              >
+                🎨 ออกแบบฟอร์ม (Designer)
+              </button>
+            )}
             <Button variant="secondary" onClick={() => setDialog({ kind: "preview" })}>
               {t.documents.preview}
             </Button>
+            {isPrivileged && active && doc.draft?.status === "draft" && (
+              <Button variant="secondary" onClick={() => setDialog({ kind: "reviewDraft" })}>
+                ทบทวนฉบับร่าง v{doc.draft.version}
+              </Button>
+            )}
             {canManage && active && (
               <>
                 <Button variant="secondary" onClick={() => setDialog({ kind: "edit" })}>
@@ -225,7 +276,7 @@ export function DocumentDetail({
                 {doc.draft ? (
                   <>
                     <Button onClick={() => setDialog({ kind: "publish" })}>
-                      {t.documents.publish} v{doc.draft.version}
+                      อนุมัติและประกาศใช้ v{doc.draft.version}
                     </Button>
                     {!doc.canDeleteDraft && (
                       <Button variant="secondary" onClick={() => setDialog({ kind: "discardDraft" })}>
@@ -279,6 +330,47 @@ export function DocumentDetail({
         </p>
       )}
 
+      {/* E-Form Quality Record & Form Designer Banner */}
+      <div className="mb-6 overflow-hidden rounded-xl border border-sky-100 bg-white p-4.5 shadow-xs dark:border-sky-900/40 dark:bg-surface">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-xl text-sky-600 border border-sky-100 dark:bg-sky-950/60 dark:border-sky-800">
+              📋
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-foreground">
+                  แบบฟอร์มบันทึกคุณภาพอิเล็กทรอนิกส์ (E-Form & Active Designer)
+                </h3>
+                <span className="rounded-full bg-sky-50 px-2.5 py-0.5 text-[10px] font-bold text-sky-700 border border-sky-200/80 dark:bg-sky-950/60 dark:text-sky-300">
+                  ISO 9001: 7.5.3
+                </span>
+              </div>
+              <p className="mt-0.5 text-xs text-text-muted">
+                ลากวาง (Drag & Drop) ออกแบบช่องกรอกข้อมูล, บันทึกผลการปฏิบัติงาน, และดาวน์โหลด PDF ควบคุม
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              onClick={() => setDialog({ kind: "filler" })}
+              className="bg-sky-600 hover:bg-sky-700 text-white font-semibold text-xs shadow-xs"
+            >
+              📝 กรอกแบบฟอร์ม / ดูประวัติ
+            </Button>
+            {canManage && active && (
+              <Button
+                variant="secondary"
+                onClick={() => setDialog({ kind: "designer" })}
+                className="text-xs font-semibold border-sky-200 hover:bg-sky-50 text-sky-700 dark:border-sky-800 dark:text-sky-300 dark:hover:bg-sky-950 transition"
+              >
+                🎨 ออกแบบฟอร์ม (Designer)
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+
       <div className="mb-6 grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardTitle className="mb-4">{t.documents.info}</CardTitle>
@@ -330,6 +422,55 @@ export function DocumentDetail({
               </div>
             )}
           </dl>
+
+          {/* Approval Matrix (Prepared / Reviewed / Approved) */}
+          {(() => {
+            const activeVer = doc.draft ?? doc.published ?? doc.versions[0];
+            if (!activeVer) return null;
+            return (
+              <div className="mt-5 border-t border-border/60 pt-4">
+                <div className="mb-2.5 flex items-center justify-between gap-2">
+                  <p className="text-xs font-bold text-text">
+                    สายการทบทวนและอนุมัติเอกสาร (Approval Matrix — Rev.{activeVer.version})
+                  </p>
+                  <VersionStatusBadge status={activeVer.status} />
+                </div>
+                <div className="grid gap-3 sm:grid-cols-3 text-xs">
+                  <div className="rounded-control border border-border/70 bg-page p-3">
+                    <p className="font-semibold text-text-muted">1. ผู้จัดทำ (Prepared by)</p>
+                    <p className="mt-1 font-bold text-text">{userName(activeVer.createdBy)}</p>
+                    <p className="text-[11px] text-text-muted">{formatDateTime(activeVer.createdAt, lang)}</p>
+                  </div>
+                  <div className="rounded-control border border-border/70 bg-page p-3">
+                    <p className="font-semibold text-text-muted">2. ผู้ทบทวน (Reviewed by)</p>
+                    {activeVer.reviewedBy ? (
+                      <>
+                        <p className="mt-1 font-bold text-text">{userName(activeVer.reviewedBy)}</p>
+                        {activeVer.reviewedAt && (
+                          <p className="text-[11px] text-text-muted">{formatDateTime(activeVer.reviewedAt, lang)}</p>
+                        )}
+                      </>
+                    ) : (
+                      <p className="mt-1 font-medium text-warning">รอผู้ทบทวนตรวจสอบ</p>
+                    )}
+                  </div>
+                  <div className="rounded-control border border-border/70 bg-page p-3">
+                    <p className="font-semibold text-text-muted">3. ผู้อนุมัติ (Approved by)</p>
+                    {activeVer.publishedBy ? (
+                      <>
+                        <p className="mt-1 font-bold text-text">{userName(activeVer.publishedBy)}</p>
+                        {activeVer.publishedAt && (
+                          <p className="text-[11px] text-text-muted">{formatDateTime(activeVer.publishedAt, lang)}</p>
+                        )}
+                      </>
+                    ) : (
+                      <p className="mt-1 font-medium text-text-muted">รออนุมัติประกาศใช้</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </Card>
 
         <Card>
@@ -427,6 +568,9 @@ export function DocumentDetail({
         />
       )}
       {dialog?.kind === "newVersion" && <NewVersionDialog docId={doc.id} nextVersion={nextVersion} onClose={close} />}
+      {dialog?.kind === "reviewDraft" && doc.draft && (
+        <ReviewDraftVersionDialog docId={doc.id} code={doc.code} version={doc.draft.version} onClose={close} />
+      )}
       {dialog?.kind === "cancel" && <CancelDocumentDialog docId={doc.id} code={doc.code} onClose={close} />}
       {dialog?.kind === "review" && <ReviewDocumentDialog docId={doc.id} onClose={close} />}
       {adjustingRight && (
@@ -485,6 +629,25 @@ export function DocumentDetail({
         }
         onCancel={close}
       />
+      {dialog?.kind === "designer" && (
+        <DocumentFormDesigner
+          documentId={doc.id}
+          documentCode={doc.code}
+          documentTitle={doc.title}
+          onClose={close}
+          onOpenFiller={() => setDialog({ kind: "filler" })}
+        />
+      )}
+      {dialog?.kind === "filler" && (
+        <DocumentFormFiller
+          documentId={doc.id}
+          documentCode={doc.code}
+          documentTitle={doc.title}
+          canDesign={canManage}
+          onClose={close}
+          onOpenDesigner={() => setDialog({ kind: "designer" })}
+        />
+      )}
     </>
   );
 }

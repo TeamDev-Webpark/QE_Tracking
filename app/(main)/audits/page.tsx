@@ -21,6 +21,6 @@ async function AuditsData() {
   const user = await getSessionUser();
   if (!user) redirect("/login");
   if (!canAccess(user.role, "/audits")) redirect("/");
-  const data = await getAuditList();
+  const data = await getAuditList(user);
   return <AuditListView {...data} />;
 }

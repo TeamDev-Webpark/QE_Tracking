@@ -1,8 +1,8 @@
 "use client";
 
 import { useDeferredValue, useMemo, useState, useTransition } from "react";
-import { Button, Card, CardTitle, ConfirmDialog, DataTable, PageHeader, useToast, type Column } from "@/components/ui";
-import { EditIcon, PlusIcon, SearchIcon, TrashIcon } from "@/components/icons";
+import { Button, Card, ConfirmDialog, DataTable, Modal, PageHeader, useToast, type Column } from "@/components/ui";
+import { EditIcon, HistoryIcon, PlusIcon, SearchIcon, TrashIcon } from "@/components/icons";
 import { StatTile } from "@/components/dashboard/StatTile";
 import { useI18n } from "@/components/providers/I18nProvider";
 import { useSessionUser } from "@/components/providers/SessionProvider";
@@ -10,7 +10,7 @@ import { getUserById } from "@/data";
 import { departments } from "@/data/departments";
 import { departmentName, formatDateTime } from "@/lib/format";
 import { deleteKpi } from "@/lib/kpi/actions";
-import type { KpiStatus } from "@/lib/kpi";
+import { evaluateKpi, type KpiStatus } from "@/lib/kpi";
 import type { KpiView, StandardOption } from "@/lib/kpi/queries";
 import { displayName } from "@/lib/user";
 import { cn } from "@/lib/cn";
@@ -31,13 +31,14 @@ export function KpiPage({ kpis, standards, defaultPeriod }: { kpis: KpiView[]; s
   const canManage = user.role === "admin" || user.role === "qe";
   const canSeeAll = user.role === "admin" || user.role === "qe" || user.role === "iso";
   const [editing, setEditing] = useState<KpiView | null>(); // undefined = closed, null = add
+  const [viewingHistory, setViewingHistory] = useState<KpiView | null>(null);
   const [deleting, setDeleting] = useState<KpiView | null>(null);
   const [delPending, startDelete] = useTransition();
   const [searchQuery, setSearchQuery] = useState("");
   const deferredSearch = useDeferredValue(searchQuery);
   const [deptFilter, setDeptFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<KpiStatus | "all">("all");
-  const [showAllChart, setShowAllChart] = useState(false);
+  const [viewMode, setViewMode] = useState<"table" | "cards">("table");
 
   const count = (s: string) => kpis.filter((k) => k.result.status === s).length;
 
@@ -55,7 +56,6 @@ export function KpiPage({ kpis, standards, defaultPeriod }: { kpis: KpiView[]; s
   }, [kpis, deferredSearch, deptFilter, statusFilter, lang]);
 
   const hasActiveFilters = searchQuery.trim() !== "" || deptFilter !== "all" || statusFilter !== "all";
-  const chartKpis = showAllChart ? filteredKpis : filteredKpis.slice(0, 10);
 
   const columns: Column<KpiView>[] = [
     {
@@ -65,7 +65,13 @@ export function KpiPage({ kpis, standards, defaultPeriod }: { kpis: KpiView[]; s
         const by = getUserById(k.updatedBy);
         return (
           <>
-            <p className="font-semibold">{k.name}</p>
+            <button
+              type="button"
+              onClick={() => setViewingHistory(k)}
+              className="text-left font-semibold text-text hover:text-primary hover:underline transition-colors cursor-pointer"
+            >
+              {k.name}
+            </button>
             {k.description && <p className="text-xs text-text-muted">{k.description}</p>}
             <p className="text-xs text-text-muted">
               {departmentName(k.departmentId, lang)}
@@ -123,37 +129,46 @@ export function KpiPage({ kpis, standards, defaultPeriod }: { kpis: KpiView[]; s
         </div>
       ),
     },
-    ...(canManage
-      ? [
-          {
-            key: "edit",
-            header: "",
-            className: "w-px text-right",
-            render: (k: KpiView) => (
-              <div className="flex items-center justify-end gap-1">
-                <button
-                  type="button"
-                  onClick={() => setEditing(k)}
-                  className="rounded-control p-2 text-text-muted hover:bg-page hover:text-primary"
-                  aria-label={`${t.common.edit} ${k.name}`}
-                  title={t.common.edit}
-                >
-                  <EditIcon width={18} height={18} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDeleting(k)}
-                  className="rounded-control p-2 text-text-muted hover:bg-danger-soft hover:text-danger"
-                  aria-label={`${t.common.delete} ${k.name}`}
-                  title={t.common.delete}
-                >
-                  <TrashIcon width={18} height={18} />
-                </button>
-              </div>
-            ),
-          },
-        ]
-      : []),
+    {
+      key: "edit",
+      header: "",
+      className: "w-px text-right",
+      render: (k: KpiView) => (
+        <div className="flex items-center justify-end gap-1 whitespace-nowrap">
+          <button
+            type="button"
+            onClick={() => setViewingHistory(k)}
+            className="inline-flex items-center gap-1 rounded-control border border-border bg-page px-2.5 py-1.5 text-xs font-semibold text-text hover:border-primary/40 hover:text-primary transition-colors cursor-pointer"
+            title="ดูประวัติรายเดือนย้อนหลัง"
+          >
+            <HistoryIcon width={14} height={14} />
+            <span>ประวัติ ({k.history?.length ?? 1})</span>
+          </button>
+          {canManage && (
+            <>
+              <button
+                type="button"
+                onClick={() => setEditing(k)}
+                className="rounded-control p-2 text-text-muted hover:bg-page hover:text-primary cursor-pointer"
+                aria-label={`${t.common.edit} ${k.name}`}
+                title={t.common.edit}
+              >
+                <EditIcon width={18} height={18} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeleting(k)}
+                className="rounded-control p-2 text-text-muted hover:bg-danger-soft hover:text-danger cursor-pointer"
+                aria-label={`${t.common.delete} ${k.name}`}
+                title={t.common.delete}
+              >
+                <TrashIcon width={18} height={18} />
+              </button>
+            </>
+          )}
+        </div>
+      ),
+    },
   ];
 
   return (
@@ -179,25 +194,6 @@ export function KpiPage({ kpis, standards, defaultPeriod }: { kpis: KpiView[]; s
         <StatTile label={t.kpiStatus.not_achieved} value={String(count("not_achieved"))} icon="✗" accent="danger" />
         <StatTile label={t.kpiStatus.no_data} value={String(count("no_data"))} icon="–" accent="neutral" />
       </div>
-
-      {filteredKpis.length > 0 && (
-        <Card className="mb-6">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <CardTitle>{t.kpi.achievementChart}</CardTitle>
-            {filteredKpis.length > 10 && (
-              <button
-                type="button"
-                onClick={() => setShowAllChart((v) => !v)}
-                className="text-xs font-semibold text-primary hover:underline cursor-pointer"
-              >
-                {showAllChart ? "แสดงเฉพาะ 10 รายการแรก" : `ดูทั้งหมด (${filteredKpis.length} รายการ)`}
-              </button>
-            )}
-          </div>
-          <p className="mb-4 text-xs text-text-muted">{t.kpi.achievementNote}</p>
-          <KpiCards kpis={chartKpis} />
-        </Card>
-      )}
 
       <Card>
         <div className="mb-4 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2.5 border-b border-border/60 pb-3">
@@ -257,16 +253,182 @@ export function KpiPage({ kpis, standards, defaultPeriod }: { kpis: KpiView[]; s
               ✕ ล้างตัวกรอง
             </button>
           )}
+
+          <div className="inline-flex rounded-lg border border-border/80 bg-page p-0.5 text-xs">
+            <button
+              type="button"
+              onClick={() => setViewMode("table")}
+              className={cn(
+                "rounded-md px-2.5 py-1 font-semibold transition-colors cursor-pointer",
+                viewMode === "table" ? "bg-surface text-primary shadow-2xs" : "text-text-muted hover:text-text",
+              )}
+            >
+              ตาราง
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("cards")}
+              className={cn(
+                "rounded-md px-2.5 py-1 font-semibold transition-colors cursor-pointer",
+                viewMode === "cards" ? "bg-surface text-primary shadow-2xs" : "text-text-muted hover:text-text",
+              )}
+            >
+              การ์ด
+            </button>
+          </div>
         </div>
 
-        <p className="mb-4 text-xs text-text-muted">{t.kpi.chartNote}</p>
-        <DataTable
-          columns={columns}
-          rows={filteredKpis}
-          rowKey={(k) => k.id}
-          emptyTitle={hasActiveFilters ? "ไม่พบ KPI ที่ตรงกับตัวกรอง" : canSeeAll ? t.kpi.empty : t.kpi.emptyEmployee}
-        />
+        {viewMode === "cards" ? (
+          <KpiCards kpis={filteredKpis} onViewHistory={(k) => setViewingHistory(k)} />
+        ) : (
+          <DataTable
+            columns={columns}
+            rows={filteredKpis}
+            rowKey={(k) => k.id}
+            emptyTitle={hasActiveFilters ? "ไม่พบ KPI ที่ตรงกับตัวกรอง" : canSeeAll ? t.kpi.empty : t.kpi.emptyEmployee}
+          />
+        )}
       </Card>
+
+      {viewingHistory && (
+        <Modal
+          open
+          size="lg"
+          onClose={() => setViewingHistory(null)}
+          closeLabel={t.common.close}
+          title={`ประวัติ KPI รายเดือน · ${viewingHistory.name}`}
+          footer={
+            <>
+              <Button variant="secondary" onClick={() => setViewingHistory(null)}>
+                {t.common.close}
+              </Button>
+              {canManage && (
+                <Button
+                  onClick={() => {
+                    const target = viewingHistory;
+                    setViewingHistory(null);
+                    setEditing(target);
+                  }}
+                >
+                  บันทึก / แก้ไขผลรายเดือน
+                </Button>
+              )}
+            </>
+          }
+        >
+          <div className="space-y-4">
+            <div className="rounded-control border border-border bg-page p-3.5 text-xs">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <span className="font-semibold text-text">
+                    {departmentName(viewingHistory.departmentId, lang)}
+                  </span>
+                  {viewingHistory.standardLabel && (
+                    <span className="text-text-muted"> · มาตรฐาน {viewingHistory.standardLabel}</span>
+                  )}
+                </div>
+                <span className="rounded bg-surface px-2.5 py-1 font-bold text-text tabular-nums">
+                  เป้าหมาย: {viewingHistory.direction === "higher" ? "≥" : "≤"}{" "}
+                  {fmt(viewingHistory.target, viewingHistory.unit)}
+                </span>
+              </div>
+              {viewingHistory.description && (
+                <p className="mt-1.5 text-text-muted">{viewingHistory.description}</p>
+              )}
+            </div>
+
+            <div className="divide-y divide-border/70 rounded-control border border-border bg-surface">
+              <div className="hidden sm:grid sm:grid-cols-[1.4fr_0.8fr_1fr_auto] sm:items-center sm:gap-3 bg-page px-4 py-2.5 text-xs font-semibold text-text-muted">
+                <span>เดือนที่วัดผล</span>
+                <span className="text-right">เป้าหมาย</span>
+                <span className="text-right">ผลจริง (ส่วนต่าง)</span>
+                <span className="w-[8.5rem] text-right">ผลการประเมิน</span>
+              </div>
+              {[...(viewingHistory.history ?? [])]
+                .sort((a, b) => b.period.localeCompare(a.period))
+                .map((h) => {
+                  const evalRes = evaluateKpi({
+                    direction: viewingHistory.direction,
+                    target: h.target,
+                    actual: h.actual,
+                  });
+                  const byUser = getUserById(h.updatedBy);
+                  const varianceText =
+                    evalRes.variance === null
+                      ? null
+                      : `${evalRes.variance > 0 ? "+" : ""}${fmt(evalRes.variance)}`;
+                  return (
+                    <div
+                      key={h.period}
+                      className="flex flex-col gap-2 px-4 py-3 text-xs hover:bg-page/40 sm:grid sm:grid-cols-[1.4fr_0.8fr_1fr_auto] sm:items-center sm:gap-3"
+                    >
+                      <div className="flex items-center justify-between gap-2 sm:block min-w-0">
+                        <p className="font-bold text-text">
+                          {formatMonth(h.period, lang)}{" "}
+                          <span className="font-normal text-text-muted">({h.period})</span>
+                        </p>
+                        <div className="sm:hidden">
+                          <KpiStatusBadge status={evalRes.status} />
+                        </div>
+                        <p className="hidden sm:block mt-0.5 truncate text-[11px] text-text-muted">
+                          {formatDateTime(h.updatedAt, lang)}
+                          {byUser ? ` · ${displayName(byUser, lang)}` : ""}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-2 sm:block sm:text-right tabular-nums">
+                        <span className="text-text-muted sm:hidden">
+                          เป้า {viewingHistory.direction === "higher" ? "≥" : "≤"}{" "}
+                          {fmt(h.target, viewingHistory.unit)}
+                        </span>
+                        <span className="hidden sm:inline text-text-muted">
+                          {viewingHistory.direction === "higher" ? "≥" : "≤"}{" "}
+                          {fmt(h.target, viewingHistory.unit)}
+                        </span>
+                        <span className="sm:hidden font-bold text-text">
+                          ผลจริง: {fmt(h.actual, viewingHistory.unit)}{" "}
+                          {varianceText && (
+                            <span
+                              className={cn(
+                                "ml-1 font-semibold",
+                                evalRes.status === "not_achieved" ? "text-danger" : "text-emerald-700",
+                              )}
+                            >
+                              ({varianceText})
+                            </span>
+                          )}
+                        </span>
+                      </div>
+
+                      <div className="hidden sm:block text-right tabular-nums">
+                        <span className="font-bold text-text">{fmt(h.actual, viewingHistory.unit)}</span>
+                        {varianceText && (
+                          <span
+                            className={cn(
+                              "ml-1.5 text-[11px] font-semibold",
+                              evalRes.status === "not_achieved" ? "text-danger" : "text-emerald-700",
+                            )}
+                          >
+                            ({varianceText})
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="hidden sm:flex sm:w-[8.5rem] sm:justify-end">
+                        <KpiStatusBadge status={evalRes.status} />
+                      </div>
+
+                      <p className="sm:hidden text-[11px] text-text-muted">
+                        อัปเดต {formatDateTime(h.updatedAt, lang)}
+                        {byUser ? ` · ${displayName(byUser, lang)}` : ""}
+                      </p>
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {editing !== undefined && (
         <KpiFormModal

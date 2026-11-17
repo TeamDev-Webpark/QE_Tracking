@@ -17,6 +17,16 @@ import { NcCreateDialog, NcFromChecklistDialog } from "./NcCreateDialogs";
 import { daysBetween, formatDateOnly, NcStatusBadge } from "./NcParts";
 
 type Tab = NcDisplayStatus | "all";
+type SortField = "number" | "status";
+type SortDir = "asc" | "desc";
+
+const STATUS_SORT_ORDER: Record<NcDisplayStatus, number> = {
+  overdue: 1,
+  open: 2,
+  in_progress: 3,
+  pending_verification: 4,
+  closed: 5,
+};
 
 const statusTones: Record<NcDisplayStatus, BadgeTone> = {
   open: "info",
@@ -49,7 +59,18 @@ export function NcList({
   const deferredSearch = useDeferredValue(searchQuery);
   const [deptFilter, setDeptFilter] = useState<string>("all");
   const [standardFilter, setStandardFilter] = useState<string>("all");
+  const [sortField, setSortField] = useState<SortField>("number");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [dialog, setDialog] = useState<"manual" | "checklist">();
+
+  const toggleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortField(field);
+      setSortDir("asc");
+    }
+  };
 
   const deptItems = useMemo(() => {
     const q = deferredSearch.trim().toLowerCase();
@@ -65,17 +86,42 @@ export function NcList({
   }, [items, deferredSearch, deptFilter, standardFilter, lang]);
 
   const count = (s: Tab) => (s === "all" ? deptItems.length : deptItems.filter((i) => i.displayStatus === s).length);
-  const rows = useMemo(
-    () => (tab === "all" ? deptItems : deptItems.filter((i) => i.displayStatus === tab)),
-    [deptItems, tab],
-  );
+  const rows = useMemo(() => {
+    const base = tab === "all" ? [...deptItems] : deptItems.filter((i) => i.displayStatus === tab);
+    const mult = sortDir === "asc" ? 1 : -1;
+    return base.sort((a, b) => {
+      if (sortField === "number") {
+        return mult * a.number.localeCompare(b.number, undefined, { numeric: true });
+      }
+      const orderDiff = STATUS_SORT_ORDER[a.displayStatus] - STATUS_SORT_ORDER[b.displayStatus];
+      if (orderDiff !== 0) return mult * orderDiff;
+      return a.number.localeCompare(b.number, undefined, { numeric: true });
+    });
+  }, [deptItems, tab, sortField, sortDir]);
   const hasActiveFilters = searchQuery.trim() !== "" || deptFilter !== "all" || standardFilter !== "all";
 
   const columns: Column<NcView>[] = [
     {
       key: "number",
-      header: t.nc.number,
-      className: "w-36",
+      header: (
+        <button
+          type="button"
+          onClick={() => toggleSort("number")}
+          className="inline-flex items-center gap-1 font-bold hover:text-primary transition-colors cursor-pointer select-none whitespace-nowrap"
+          title="คลิกเพื่อเรียงลำดับตามเลขที่ NC"
+        >
+          <span>{t.nc.number}</span>
+          <span
+            className={cn(
+              "inline-flex w-4 justify-center text-xs leading-none",
+              sortField === "number" ? "text-primary" : "text-text-muted/60",
+            )}
+          >
+            {sortField === "number" ? (sortDir === "asc" ? "▲" : "▼") : "⇅"}
+          </span>
+        </button>
+      ),
+      className: "w-40",
       render: (n) => (
         <>
           <p className="font-bold whitespace-nowrap">{n.number}</p>
@@ -101,8 +147,9 @@ export function NcList({
     {
       key: "car",
       header: `${t.nc.car} / ${t.nc.dueDate}`,
+      className: "w-56",
       render: (n) => {
-        if (!n.car) return <span className="text-sm text-text-muted">{t.nc.noCar}</span>;
+        if (!n.car) return <span className="text-sm text-text-muted whitespace-nowrap">{t.nc.noCar}</span>;
         const owner = getUserById(n.car.ownerId);
         return (
           <div className="text-sm whitespace-nowrap">
@@ -117,11 +164,33 @@ export function NcList({
         );
       },
     },
-    { key: "status", header: t.nc.status, render: (n) => <NcStatusBadge status={n.displayStatus} /> },
+    {
+      key: "status",
+      header: (
+        <button
+          type="button"
+          onClick={() => toggleSort("status")}
+          className="inline-flex items-center gap-1 font-bold hover:text-primary transition-colors cursor-pointer select-none whitespace-nowrap"
+          title="คลิกเพื่อเรียงลำดับตามสถานะ"
+        >
+          <span>{t.nc.status}</span>
+          <span
+            className={cn(
+              "inline-flex w-4 justify-center text-xs leading-none",
+              sortField === "status" ? "text-primary" : "text-text-muted/60",
+            )}
+          >
+            {sortField === "status" ? (sortDir === "asc" ? "▲" : "▼") : "⇅"}
+          </span>
+        </button>
+      ),
+      className: "w-36 whitespace-nowrap",
+      render: (n) => <NcStatusBadge status={n.displayStatus} />,
+    },
     {
       key: "view",
       header: "",
-      className: "w-px text-right",
+      className: "w-32 text-right",
       render: (n) => (
         <Link
           href={`/corrective-actions/${n.id}`}

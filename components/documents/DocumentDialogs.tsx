@@ -8,6 +8,7 @@ import {
   cancelDocument,
   createVersion,
   markDocumentReviewed,
+  reviewDraftVersion,
   setUserLimit,
   type DocResult,
 } from "@/lib/documents/actions";
@@ -198,6 +199,32 @@ export function ReviewDocumentDialog({
       initial={defaultNextReviewDate()}
       successMessage={t.documents.reviewSaved}
       run={(date) => markDocumentReviewed(docId, date)}
+      onClose={onClose}
+    />
+  );
+}
+
+export function ReviewDraftVersionDialog({
+  docId,
+  code,
+  version,
+  onClose,
+}: {
+  docId: string;
+  code: string;
+  version: number;
+  onClose: () => void;
+}) {
+  return (
+    <SingleFieldDialog
+      title={`ทบทวนฉบับร่าง ${code} (Rev.${version})`}
+      label="ความเห็นผู้ทบทวน (Reviewed by Comment)"
+      note="ยืนยันว่าได้ตรวจสอบความถูกต้องของเนื้อหาตามมาตรฐาน ISO แล้ว เพื่อส่งต่อให้ผู้อนุมัติประกาศใช้ (Approved by)"
+      confirmLabel="ยืนยันการทบทวน (Reviewed)"
+      multiline
+      initial="ตรวจสอบความถูกต้องครบถ้วนตามข้อกำหนด ISO เห็นควรอนุมัติประกาศใช้"
+      successMessage={`บันทึกการทบทวน ${code} Rev.${version} เรียบร้อยแล้ว`}
+      run={(comment) => reviewDraftVersion(docId, comment)}
       onClose={onClose}
     />
   );

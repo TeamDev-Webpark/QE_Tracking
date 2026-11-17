@@ -46,12 +46,13 @@ export function RiskReviewModal({
   const [pending, startTransition] = useTransition();
 
   const [mitigationPlan, setMitigationPlan] = useState(risk.mitigationPlan ?? "");
-  const [likelihood, setLikelihood] = useState(risk.likelihood);
-  const [impact, setImpact] = useState(risk.impact);
+  const [likelihood, setLikelihood] = useState(risk.residualLikelihood ?? risk.likelihood);
+  const [impact, setImpact] = useState(risk.residualImpact ?? risk.impact);
   const [reviewNote, setReviewNote] = useState("");
   const [mitigationError, setMitigationError] = useState<string | null>(null);
+  const [noteError, setNoteError] = useState<string | null>(null);
 
-  const prevScore = risk.score;
+  const prevScore = risk.initialScore;
   const nextScore = riskScore(likelihood, impact);
   const nextLevel = riskLevel(nextScore);
   const isClosing = targetStatus === "closed";
@@ -89,9 +90,28 @@ export function RiskReviewModal({
       }
       toast.success(
         isClosing
-          ? `ปิดเรื่อง ${risk.code} เรียบร้อยแล้ว`
-          : `อัปเดต ${risk.code} เป็น "ติดตามผล" เรียบร้อยแล้ว`,
+          ? `ตรวจยืนยันและปิดเรื่อง ${risk.code} เรียบร้อยแล้ว`
+          : `ส่งผลการแก้ไข ${risk.code} (สถานะ: ติดตามผล) เรียบร้อยแล้ว`,
       );
+      onClose();
+    });
+  }
+
+  function handleRejectToMitigating() {
+    if (!reviewNote.trim()) {
+      setNoteError("กรุณาระบุเหตุผลหรือสิ่งที่ต้องแก้ไขเพิ่มเติมในช่องหมายเหตุก่อนกดตีกลับ");
+      return;
+    }
+    setNoteError(null);
+    startTransition(async () => {
+      const res = await updateRiskStatus(risk.id, "mitigating", {
+        reviewNote: `[ตีกลับแก้ไข] ${reviewNote.trim()}`,
+      });
+      if (!res.ok) {
+        toast.error(t.errors.forbidden);
+        return;
+      }
+      toast.success(`ส่งกลับ ${risk.code} ให้แผนกแก้ไขเพิ่มเติม (สถานะ: กำลังแก้ไข)`);
       onClose();
     });
   }
@@ -101,15 +121,20 @@ export function RiskReviewModal({
       open
       onClose={pending ? () => {} : onClose}
       size="lg"
-      title={isClosing ? `ทบทวนและปิดความเสี่ยง (${risk.code})` : `บันทึกมาตรการเพื่อติดตามผล (${risk.code})`}
+      title={isClosing ? `ตรวจยืนยันผลและปิดความเสี่ยง (${risk.code})` : `ส่งผลการแก้ไขและประเมินความเสี่ยงหลังแก้ (${risk.code})`}
       closeLabel={t.common.close}
       footer={
         <>
+          {isClosing && (
+            <Button variant="danger" className="mr-auto" onClick={handleRejectToMitigating} disabled={pending}>
+              ตีกลับให้แก้ไขใหม่
+            </Button>
+          )}
           <Button variant="secondary" onClick={onClose} disabled={pending}>
             {t.common.cancel}
           </Button>
           <Button type="submit" form="risk-review-form" disabled={pending || scoreTooHighToClose}>
-            {pending ? t.common.saving : isClosing ? "ยืนยันปิดเรื่อง" : "บันทึกและติดตามผล"}
+            {pending ? t.common.saving : isClosing ? "อนุมัติปิดเรื่อง" : "ส่งผลแก้ไข"}
           </Button>
         </>
       }
@@ -145,10 +170,10 @@ export function RiskReviewModal({
 
         <div className="rounded-control border border-border bg-page p-3.5 space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="text-xs font-bold text-text">ทบทวนคะแนนความเสี่ยงหลังแก้ไข</span>
+            <span className="text-xs font-bold text-text">ประเมินความเสี่ยงคงเหลือหลังแก้ไข (Residual Risk)</span>
             <div className="flex items-center gap-2 text-xs">
               <span className="text-text-muted">
-                เดิม {prevScore} → ใหม่ <strong className="text-text">{nextScore}</strong>
+                ตั้งต้น {prevScore} ({risk.likelihood}×{risk.impact}) → หลังแก้ไข <strong className="text-text">{nextScore}</strong> ({likelihood}×{impact})
               </span>
               <Badge tone={LEVEL_TONE[nextLevel]}>{t.riskLevel[nextLevel]}</Badge>
               {nextScore < prevScore && (
@@ -197,16 +222,40 @@ export function RiskReviewModal({
           )}
         </div>
 
-        <Field htmlFor="review-note" label="สรุปผลการทบทวน / เหตุผลเพิ่มเติม (ไม่บังคับ)">
+        {risk.reviewNote && (
+          <div className="rounded-control border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-xs text-amber-900">
+            <span className="font-bold">หมายเหตุล่าสุด: </span>
+            <span>{risk.reviewNote}</span>
+          </div>
+        )}
+
+        <Field
+          htmlFor="review-note"
+          label={
+            isClosing ? (
+              <>
+                หมายเหตุจากผู้ตรวจ / เหตุผลในการตีกลับ{" "}
+                <span className="text-danger">(จำเป็นต้องกรอกหากกดตีกลับ)</span>
+              </>
+            ) : (
+              "หมายเหตุการส่งผลแก้ไข (ไม่บังคับ)"
+            )
+          }
+          error={noteError ?? undefined}
+        >
           <Textarea
             id="review-note"
             rows={2}
             value={reviewNote}
-            onChange={(e) => setReviewNote(e.target.value)}
+            onChange={(e) => {
+              setReviewNote(e.target.value);
+              if (noteError) setNoteError(null);
+            }}
+            invalid={!!noteError}
             placeholder={
               isClosing
-                ? "เช่น ทดสอบระบบและติดตามผลครบ 30 วันแล้ว ไม่พบปัญหาซ้ำ"
-                : "เช่น ติดตั้งมาตรการแล้ว รอติดตามผลอีก 1 เดือน"
+                ? "ระบุผลการตรวจยืนยัน หรือระบุเหตุผลที่ตีกลับให้แผนกแก้ไขใหม่..."
+                : "เช่น ติดตั้งมาตรการแล้วและตรวจเช็กซ้ำครบถ้วน"
             }
           />
         </Field>

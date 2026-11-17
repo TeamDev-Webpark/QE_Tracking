@@ -3,10 +3,17 @@
 import { Suspense, useState, type ReactNode } from "react";
 import { Sidebar, SidebarSkeleton } from "./Sidebar";
 import { Topbar } from "./Topbar";
+import type { UpcomingAuditNotice } from "@/lib/audits/queries";
 import { cn } from "@/lib/cn";
 
 /** Main layout: Collapsible Sidebar (desktop & mobile drawer) + Topbar + content. */
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({
+  children,
+  upcomingAudits = [],
+}: {
+  children: ReactNode;
+  upcomingAudits?: UpcomingAuditNotice[];
+}) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [desktopCollapsed, setDesktopCollapsed] = useState(false);
 
@@ -64,6 +71,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <Topbar
           onMenuClick={handleToggle}
           isSidebarCollapsed={desktopCollapsed}
+          upcomingAudits={upcomingAudits}
         />
         <main className="flex-1 min-w-0 p-3.5 sm:p-6 lg:p-8">{children}</main>
       </div>

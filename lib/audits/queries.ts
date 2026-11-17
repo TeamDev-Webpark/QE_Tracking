@@ -3,7 +3,19 @@ import { getUserById, getUsers } from "@/data";
 import { readDb } from "@/lib/db";
 import { displayName } from "@/lib/user";
 import { isAuditOverdue, nextAuditCode, summarizeAuditFindings } from "@/lib/audits";
-import type { InternalAudit } from "@/lib/types";
+import type { InternalAudit, User } from "@/lib/types";
+
+export type UpcomingAuditNotice = {
+  id: string;
+  code: string;
+  title: string;
+  standardLabel: string;
+  departmentId: string;
+  scheduledDate: string; // YYYY-MM-DD (Date only, no time)
+  leadAuditorName: string;
+  scope: string;
+  status: "planned" | "in_progress";
+};
 
 export type AuditView = InternalAudit & {
   standardLabel: string;
@@ -18,14 +30,45 @@ export type AuditView = InternalAudit & {
   };
 };
 
-export async function getAuditList() {
+export async function getUpcomingAuditNotices(user: User): Promise<UpcomingAuditNotice[]> {
   await connection();
   const db = await readDb();
   const stdMap = new Map(db.standards.map((s) => [s.id, `${s.code}:${s.version}`]));
+  const isPrivileged = user.role === "admin" || user.role === "qe" || user.role === "iso";
 
-  const audits: AuditView[] = db.audits
+  return db.audits
+    .filter((a) => a.status === "planned" || a.status === "in_progress")
+    .filter((a) => isPrivileged || a.departmentId === user.departmentId)
     .map((a) => {
-      const lead = getUserById(a.leadAuditorId);
+      const lead = db.users.find((u) => u.id === a.leadAuditorId) ?? getUserById(a.leadAuditorId);
+      return {
+        id: a.id,
+        code: a.code,
+        title: a.title,
+        standardLabel: stdMap.get(a.standardId) ?? a.standardId,
+        departmentId: a.departmentId,
+        scheduledDate: a.scheduledDate,
+        leadAuditorName: lead ? displayName(lead, "th") : "-",
+        scope: a.scope,
+        status: a.status as "planned" | "in_progress",
+      };
+    })
+    .sort((a, b) => (a.scheduledDate || "").localeCompare(b.scheduledDate || ""));
+}
+
+export async function getAuditList(user?: User) {
+  await connection();
+  const db = await readDb();
+  const stdMap = new Map(db.standards.map((s) => [s.id, `${s.code}:${s.version}`]));
+  const isEmployee = user?.role === "employee";
+
+  const visibleAudits = isEmployee
+    ? db.audits.filter((a) => a.departmentId === user.departmentId)
+    : db.audits;
+
+  const audits: AuditView[] = visibleAudits
+    .map((a) => {
+      const lead = db.users.find((u) => u.id === a.leadAuditorId) ?? getUserById(a.leadAuditorId);
       return {
         ...a,
         standardLabel: stdMap.get(a.standardId) ?? a.standardId,
@@ -37,9 +80,9 @@ export async function getAuditList() {
     .sort((a, b) => (b.scheduledDate || "").localeCompare(a.scheduledDate || ""));
 
   const standards = db.standards.map((s) => ({ id: s.id, label: `${s.code}:${s.version} — ${s.name}` }));
-  const auditors = getUsers()
-    .filter((u) => u.role === "admin" || u.role === "qe" || u.role === "iso")
-    .map((u) => ({ id: u.id, name: displayName(u, "th"), role: u.role }));
+  const auditors = db.users
+    .filter((u) => (u.role === "admin" || u.role === "qe" || u.role === "iso") && u.active !== false)
+    .map((u) => ({ id: u.id, name: displayName(u, "th"), role: u.role, departmentId: u.departmentId }));
 
   return {
     audits,

@@ -40,16 +40,19 @@ export type DemoAccount = {
 
 export type DocumentType = "QM" | "QP" | "EP" | "WI" | "FM" | "STD";
 
-export type VersionStatus = "draft" | "published" | "superseded";
+export type VersionStatus = "draft" | "pending_review" | "published" | "superseded";
 
 export type DocumentVersion = {
   version: number; // 1, 2, 3 ...
   changeNote: string;
   status: VersionStatus;
   createdAt: string; // ISO date-time
-  createdBy: string; // user id
+  createdBy: string; // user id (Prepared by)
+  reviewedAt?: string;
+  reviewedBy?: string; // user id (Reviewed by)
+  reviewNote?: string;
   publishedAt?: string;
-  publishedBy?: string;
+  publishedBy?: string; // user id (Approved by)
 };
 
 /** Shown status: cancelled > published (has an effective version) > draft. */
@@ -221,6 +224,14 @@ export type Nonconformity = {
 
 export type KpiDirection = "higher" | "lower"; // which way is better
 
+export type KpiHistoryEntry = {
+  period: string; // YYYY-MM
+  target: number;
+  actual: number | null;
+  updatedAt: string;
+  updatedBy: string;
+};
+
 export type Kpi = {
   id: string;
   name: string;
@@ -232,6 +243,7 @@ export type Kpi = {
   target: number;
   actual: number | null; // null = not measured yet
   period: string; // measurement month, YYYY-MM
+  history?: KpiHistoryEntry[]; // monthly history (sorted by period)
   updatedAt: string;
   updatedBy: string;
 };
@@ -250,9 +262,12 @@ export type RiskItem = {
   clause: string;
   departmentId: string;
   ownerId: string;
-  likelihood: number; // 1–5
-  impact: number; // 1–5
+  likelihood: number; // 1–5 (Initial Risk)
+  impact: number; // 1–5 (Initial Risk)
+  residualLikelihood?: number; // 1–5 (Residual Risk after mitigation)
+  residualImpact?: number; // 1–5 (Residual Risk after mitigation)
   mitigationPlan: string;
+  reviewNote?: string; // latest review / rejection note
   status: RiskStatus;
   reviewDate: string; // YYYY-MM-DD
   updatedAt: string;

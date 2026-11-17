@@ -12,8 +12,7 @@ import { riskLevel, riskScore } from "@/lib/risks";
 import { saveRisk } from "@/lib/risks/actions";
 import type { RiskRequirementOption, RiskView } from "@/lib/risks/queries";
 import type { FieldError } from "@/lib/standards/actions";
-import type { RiskLevel, RiskStatus } from "@/lib/types";
-import { RiskStatusDropdown } from "./RiskStatusDropdown";
+import type { RiskLevel } from "@/lib/types";
 
 const LEVEL_TONE: Record<RiskLevel, BadgeTone> = {
   low: "success",
@@ -108,7 +107,6 @@ function RiskFormInner({
   const [likelihood, setLikelihood] = useState(risk?.likelihood ?? 3);
   const [impact, setImpact] = useState(risk?.impact ?? 3);
   const [mitigationPlan, setMitigationPlan] = useState(risk?.mitigationPlan ?? "");
-  const [status, setStatus] = useState<RiskStatus>(risk?.status ?? "open");
   const [reviewDate, setReviewDate] = useState(risk?.reviewDate ?? todayInBangkok());
   const [showAdvanced, setShowAdvanced] = useState(Boolean(risk?.standardId || risk?.description));
   const [fieldErrors, setFieldErrors] = useState<Record<string, FieldError>>({});
@@ -120,16 +118,11 @@ function RiskFormInner({
 
   const liveScore = riskScore(likelihood, impact);
   const liveLevel = riskLevel(liveScore);
-  const scoreTooHighToClose = status === "closed" && liveScore >= 10;
   const err = (k: string) => (fieldErrors[k] ? t.errors[fieldErrors[k]] : undefined);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setFieldErrors({});
-    if (scoreTooHighToClose) {
-      toast.error("คะแนนความเสี่ยงยังสูง/วิกฤต (10 ขึ้นไป) ยังไม่สามารถปิดเรื่องได้");
-      return;
-    }
     startTransition(async () => {
       const res = await saveRisk(risk?.id ?? null, {
         code,
@@ -141,8 +134,10 @@ function RiskFormInner({
         ownerId,
         likelihood,
         impact,
+        residualLikelihood: risk?.residualLikelihood ?? null,
+        residualImpact: risk?.residualImpact ?? null,
         mitigationPlan,
-        status,
+        status: risk?.status ?? "open",
         reviewDate,
       });
       if (!res.ok) {
@@ -313,43 +308,22 @@ function RiskFormInner({
           </div>
         </div>
 
-        {/* 4. แผนลดความเสี่ยง & สถานะ */}
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div className="sm:col-span-2">
-            <Field
-              htmlFor="risk-plan"
-              label={t.risks.mitigationPlan}
-              required={status === "monitored" || status === "closed"}
-              error={err("mitigationPlan")}
-            >
-              <Textarea
-                id="risk-plan"
-                rows={2}
-                value={mitigationPlan}
-                onChange={(e) => setMitigationPlan(e.target.value)}
-                placeholder="ระบุมาตรการป้องกันหรือลดความเสี่ยง..."
-                invalid={!!fieldErrors.mitigationPlan}
-              />
-            </Field>
-          </div>
-          <Field htmlFor="risk-status" label={t.risks.status} hint={t.riskStatusDesc[status]}>
-            <RiskStatusDropdown
-              id="risk-status"
-              value={status}
-              onChange={setStatus}
-              fullWidth
-              disabledStatuses={risk?.status === "open" ? ["closed"] : []}
-              disabledReason="ต้องเปลี่ยนเป็น กำลังแก้ไข หรือ ติดตามผล ก่อนปิดเรื่อง"
-              ariaLabel={t.risks.status}
-            />
-          </Field>
-        </div>
-
-        {scoreTooHighToClose && (
-          <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800">
-            คะแนนความเสี่ยงยังอยู่ระดับ <strong>สูง / วิกฤต ({liveScore} คะแนน)</strong> จึงยังไม่สามารถเลือกสถานะ <strong>ปิดเรื่องแล้ว</strong> ได้ — กรุณาลดคะแนนให้ต่ำกว่า 10 ก่อน หรือเลือกเป็น <strong>ติดตามผล</strong> แทน
-          </div>
-        )}
+        {/* 4. แผนลดความเสี่ยง & สถานะอัตโนมัติ */}
+        <Field
+          htmlFor="risk-plan"
+          label={t.risks.mitigationPlan}
+          error={err("mitigationPlan")}
+          hint="สถานะและคะแนนความเสี่ยงหลังแก้ไขจะปรับอัตโนมัติเมื่อผู้รับผิดชอบกด 'เริ่มแก้ไข' → 'ส่งผลแก้ไข' และ QE กด 'ตรวจปิดเรื่อง'"
+        >
+          <Textarea
+            id="risk-plan"
+            rows={2}
+            value={mitigationPlan}
+            onChange={(e) => setMitigationPlan(e.target.value)}
+            placeholder="ระบุแนวทางหรือมาตรการป้องกันเบื้องต้น..."
+            invalid={!!fieldErrors.mitigationPlan}
+          />
+        </Field>
 
         {/* 5. ข้อมูลเพิ่มเติม (พับได้เพื่อไม่ให้รกตา) */}
         <div className="border-t border-border/60 pt-3">

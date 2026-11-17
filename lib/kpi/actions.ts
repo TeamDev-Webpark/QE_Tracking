@@ -68,11 +68,42 @@ export async function saveKpi(id: string | undefined, input: KpiInput): Promise<
     if (id) {
       const k = db.kpis.find((k) => k.id === id)!;
       const changes = diffFields(k, record, [...fields]);
-      Object.assign(k, record);
+      const history = k.history ? [...k.history] : [];
+      if (!history.some((h) => h.period === k.period)) {
+        history.push({
+          period: k.period,
+          target: k.target,
+          actual: k.actual,
+          updatedAt: k.updatedAt,
+          updatedBy: k.updatedBy,
+        });
+      }
+      const existingIdx = history.findIndex((h) => h.period === record.period);
+      const entry = {
+        period: record.period,
+        target: record.target,
+        actual: record.actual,
+        updatedAt: now,
+        updatedBy: user.id,
+      };
+      if (existingIdx >= 0) history[existingIdx] = entry;
+      else history.push(entry);
+      history.sort((a, b) => a.period.localeCompare(b.period));
+
+      Object.assign(k, record, { history });
       db.auditLog.push(auditEntry(user, "update", { type: "kpi", id, label: record.name }, { changes }));
     } else {
       const newId = randomUUID();
-      db.kpis.push({ id: newId, ...record });
+      const history = [
+        {
+          period: record.period,
+          target: record.target,
+          actual: record.actual,
+          updatedAt: now,
+          updatedBy: user.id,
+        },
+      ];
+      db.kpis.push({ id: newId, ...record, history });
       db.auditLog.push(
         auditEntry(user, "create", { type: "kpi", id: newId, label: record.name }, {
           changes: diffFields(undefined, record, [...fields]),

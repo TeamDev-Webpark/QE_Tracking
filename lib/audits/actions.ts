@@ -10,7 +10,7 @@ import { nextNumber, todayInBangkok } from "@/lib/nc";
 import type { FieldError } from "@/lib/standards/actions";
 import type { FindingResult, InternalAudit, InternalAuditStatus } from "@/lib/types";
 
-export type AuditError = "forbidden" | "notFound" | "invalidState";
+export type AuditError = "forbidden" | "notFound" | "invalidState" | "sameDepartmentAuditor";
 export type AuditResult =
   | { ok: true; id?: string }
   | { ok: false; error?: AuditError; fieldErrors?: Record<string, FieldError> };
@@ -55,6 +55,11 @@ export async function saveAuditPlan(id: string | null, input: SaveAuditPlanInput
   if (!data.leadAuditorId) fieldErrors.leadAuditorId = "required";
   if (!data.scheduledDate) fieldErrors.scheduledDate = "required";
   if (Object.keys(fieldErrors).length) return { ok: false, fieldErrors };
+
+  const leadAuditor = db.users.find((u) => u.id === data.leadAuditorId);
+  if (leadAuditor && leadAuditor.departmentId === data.departmentId) {
+    return { ok: false, error: "sameDepartmentAuditor" };
+  }
 
   const now = new Date().toISOString();
   const targetId = id ?? randomUUID();

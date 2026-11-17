@@ -42,6 +42,8 @@ export type SaveRiskInput = {
   ownerId: string;
   likelihood: number;
   impact: number;
+  residualLikelihood?: number | null;
+  residualImpact?: number | null;
   mitigationPlan: string;
   status: RiskStatus;
   reviewDate: string;
@@ -59,6 +61,17 @@ export async function saveRisk(id: string | null, input: SaveRiskInput): Promise
   const code = rawCode || existing?.code || nextRiskCode(db.risks.map((r) => r.code));
   const likelihood = Math.min(5, Math.max(1, Math.round(Number(input.likelihood) || 1)));
   const impact = Math.min(5, Math.max(1, Math.round(Number(input.impact) || 1)));
+  const hasResidual =
+    input.residualLikelihood !== null &&
+    input.residualLikelihood !== undefined &&
+    input.residualImpact !== null &&
+    input.residualImpact !== undefined;
+  const residualLikelihood = hasResidual
+    ? Math.min(5, Math.max(1, Math.round(Number(input.residualLikelihood) || 1)))
+    : undefined;
+  const residualImpact = hasResidual
+    ? Math.min(5, Math.max(1, Math.round(Number(input.residualImpact) || 1)))
+    : undefined;
 
   const data = {
     code,
@@ -70,6 +83,8 @@ export async function saveRisk(id: string | null, input: SaveRiskInput): Promise
     ownerId: clean(input.ownerId),
     likelihood,
     impact,
+    residualLikelihood,
+    residualImpact,
     mitigationPlan: clean(input.mitigationPlan),
     status: STATUSES.includes(input.status) ? input.status : "open",
     reviewDate: clean(input.reviewDate),
@@ -78,7 +93,7 @@ export async function saveRisk(id: string | null, input: SaveRiskInput): Promise
   const fieldErrors: Record<string, FieldError> = {};
   if (!data.title) fieldErrors.title = "required";
   if (!departments.some((d) => d.id === data.departmentId)) fieldErrors.departmentId = "required";
-  if (!getUserById(data.ownerId)) fieldErrors.ownerId = "required";
+  if (!db.users.some((u) => u.id === data.ownerId) && !getUserById(data.ownerId)) fieldErrors.ownerId = "required";
   if (!isValidYmd(data.reviewDate)) fieldErrors.reviewDate = "required";
   if (db.risks.some((r) => r.id !== id && r.code.toLowerCase() === data.code.toLowerCase())) {
     fieldErrors.code = "duplicate";
@@ -90,7 +105,8 @@ export async function saveRisk(id: string | null, input: SaveRiskInput): Promise
   if (existing?.status === "open" && data.status === "closed") {
     return { ok: false, error: "invalidTransition" };
   }
-  if (data.status === "closed" && data.likelihood * data.impact >= 10) {
+  const effectiveScore = (residualLikelihood ?? data.likelihood) * (residualImpact ?? data.impact);
+  if (data.status === "closed" && effectiveScore > (db.settings.riskAcceptableMaxScore || 9)) {
     return { ok: false, error: "scoreTooHighToClose" };
   }
 
@@ -108,11 +124,17 @@ export async function saveRisk(id: string | null, input: SaveRiskInput): Promise
         "ownerId",
         "likelihood",
         "impact",
+        "residualLikelihood",
+        "residualImpact",
         "mitigationPlan",
         "status",
         "reviewDate",
       ]);
       Object.assign(target, data, { updatedAt: now, updatedBy: user.id });
+      if (!hasResidual) {
+        delete target.residualLikelihood;
+        delete target.residualImpact;
+      }
       if (changes.length) {
         draft.auditLog.push(
           auditEntry(user, "update", { type: "risk", id: target.id, label: target.code }, { changes }),
@@ -133,7 +155,16 @@ export async function saveRisk(id: string | null, input: SaveRiskInput): Promise
         "create",
         { type: "risk", id: targetId, label: data.code },
         {
-          changes: diffFields(undefined, data, ["code", "title", "departmentId", "likelihood", "impact", "status"]),
+          changes: diffFields(undefined, data, [
+            "code",
+            "title",
+            "departmentId",
+            "likelihood",
+            "impact",
+            "residualLikelihood",
+            "residualImpact",
+            "status",
+          ]),
         },
       ),
     );
@@ -149,8 +180,14 @@ export async function updateRiskStatus(
   review?: RiskStatusReview,
 ): Promise<RiskResult> {
   const user = await getSessionUser();
-  if (!user || (user.role !== "admin" && user.role !== "qe")) return { ok: false, error: "forbidden" };
+  if (!user) return { ok: false, error: "forbidden" };
+  const isManager = user.role === "admin" || user.role === "qe";
+  const isEmployee = user.role === "employee";
+  if (!isManager && !isEmployee) return { ok: false, error: "forbidden" };
   if (!STATUSES.includes(status)) return { ok: false, error: "notFound" };
+
+  // Employees cannot close a risk directly — only QE/Admin can approve closing
+  if (isEmployee && status === "closed") return { ok: false, error: "forbidden" };
 
   let error: RiskError | null = null;
   const now = new Date().toISOString();
@@ -158,6 +195,11 @@ export async function updateRiskStatus(
     const target = draft.risks.find((r) => r.id === id);
     if (!target) {
       error = "notFound";
+      return;
+    }
+    // Employees may only update risks of their own department (and cannot reopen closed risks)
+    if (isEmployee && (target.departmentId !== user.departmentId || target.status === "closed")) {
+      error = "forbidden";
       return;
     }
     if (target.status === status && !review) return;
@@ -174,40 +216,52 @@ export async function updateRiskStatus(
       return;
     }
 
-    const nextLikelihood =
+    const nextResidualLikelihood =
       review?.likelihood !== undefined
         ? Math.min(5, Math.max(1, Math.round(Number(review.likelihood) || target.likelihood)))
-        : target.likelihood;
-    const nextImpact =
+        : (target.residualLikelihood ?? target.likelihood);
+    const nextResidualImpact =
       review?.impact !== undefined
         ? Math.min(5, Math.max(1, Math.round(Number(review.impact) || target.impact)))
-        : target.impact;
+        : (target.residualImpact ?? target.impact);
 
-    if (status === "closed" && nextLikelihood * nextImpact >= 10) {
+    const hasResidualUpdate = review?.likelihood !== undefined || review?.impact !== undefined;
+    const effectiveL = hasResidualUpdate ? nextResidualLikelihood : (target.residualLikelihood ?? target.likelihood);
+    const effectiveI = hasResidualUpdate ? nextResidualImpact : (target.residualImpact ?? target.impact);
+
+    if (status === "closed" && effectiveL * effectiveI > (draft.settings.riskAcceptableMaxScore || 9)) {
       error = "scoreTooHighToClose";
       return;
     }
 
-    const changes = diffFields(
-      target,
-      {
-        status,
-        mitigationPlan: nextMitigation,
-        likelihood: nextLikelihood,
-        impact: nextImpact,
-      },
-      ["status", "mitigationPlan", "likelihood", "impact"],
-    );
+    const afterState = {
+      status,
+      mitigationPlan: nextMitigation,
+      residualLikelihood: hasResidualUpdate ? nextResidualLikelihood : target.residualLikelihood,
+      residualImpact: hasResidualUpdate ? nextResidualImpact : target.residualImpact,
+    };
+
+    const changes = diffFields(target, afterState, [
+      "status",
+      "mitigationPlan",
+      "residualLikelihood",
+      "residualImpact",
+    ]);
 
     const reviewNote = clean(review?.reviewNote);
     if (reviewNote) {
-      changes.push({ field: "reviewNote", from: "", to: reviewNote });
+      changes.push({ field: "reviewNote", from: target.reviewNote ?? "", to: reviewNote });
+      target.reviewNote = reviewNote;
+    } else if (review?.reviewNote === "") {
+      delete target.reviewNote;
     }
 
     target.status = status;
     target.mitigationPlan = nextMitigation;
-    target.likelihood = nextLikelihood;
-    target.impact = nextImpact;
+    if (hasResidualUpdate) {
+      target.residualLikelihood = nextResidualLikelihood;
+      target.residualImpact = nextResidualImpact;
+    }
     target.updatedAt = now;
     target.updatedBy = user.id;
 

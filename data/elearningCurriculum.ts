@@ -8,11 +8,22 @@ export type LessonArticleSection = {
   };
 };
 
+export type VideoCheckpoint = {
+  id: string;
+  timeSec: number; // Timestamp in seconds where the video pauses to ask this question
+  question: string;
+  choices: string[];
+  answerIndex: number;
+  explanation?: string;
+};
+
 export type LessonChapter = {
   id: string;
   title: string;
   durationMin: number;
   clauseRef: string;
+  videoUrl?: string;
+  videoCheckpoints?: VideoCheckpoint[];
   objectives: string[];
   articles: LessonArticleSection[];
   keyConcepts: { heading: string; detail: string }[];
@@ -49,6 +60,32 @@ export const CURRICULUM_BY_COURSE: Record<string, CourseCurriculum> = {
         title: "บทที่ 1: โครงสร้างมาตรฐาน ISO 9001:2015 และหลักการบริหารคุณภาพ 7 ประการ",
         durationMin: 30,
         clauseRef: "ISO 9001 ข้อ 0.1 – 0.3 และหมวด 4 – 10",
+        videoCheckpoints: [
+          {
+            id: "cp-ch1-1",
+            timeSec: 10,
+            question: "ตามหลักการบริหารคุณภาพ 7 ประการ ข้อใดคือ 'หลัก 3 ไม่' ในการปฏิบัติงานหน้างาน?",
+            choices: [
+              "ไม่รับงานเสีย · ไม่ผลิตงานเสีย · ไม่ส่งต่องานเสีย",
+              "ไม่พูดคุย · ไม่เดินออกนอกพื้นที่ · ไม่หยุดเครื่องจักร",
+              "ไม่แก้ไขเอกสาร · ไม่บันทึกข้อมูล · ไม่แจ้งหัวหน้างาน",
+            ],
+            answerIndex: 0,
+            explanation: "หลัก 3 ไม่ คือ ไม่รับงานเสียจากขั้นตอนก่อนหน้า ไม่ผลิตงานเสียในขั้นตอนตนเอง และไม่ส่งต่องานเสียไปยังแผนกถัดไป",
+          },
+          {
+            id: "cp-ch1-2",
+            timeSec: 20,
+            question: "การออกใบ NC/CAR เพื่อวิเคราะห์รากเหง้าสาเหตุและป้องกันการเกิดซ้ำ อยู่ในหมวดใดของ ISO 9001:2015?",
+            choices: [
+              "หมวดที่ 6 การวางแผน (Plan)",
+              "หมวดที่ 8 การปฏิบัติการ (Do)",
+              "หมวดที่ 10 การปรับปรุง (Act)",
+            ],
+            answerIndex: 2,
+            explanation: "หมวดที่ 10 (Improvement / Act) คือการจัดการความไม่สอดคล้องและการปฏิบัติการแก้ไข (NC/CAR)",
+          },
+        ],
         objectives: [
           "เข้าใจความหมายและความสำคัญของระบบบริหารงานคุณภาพ (QMS) ต่อองค์กรและลูกค้า",
           "อธิบายหลักการบริหารงานคุณภาพ 7 ประการ พร้อมยกตัวอย่างการนำไปใช้ในงานจริงได้",

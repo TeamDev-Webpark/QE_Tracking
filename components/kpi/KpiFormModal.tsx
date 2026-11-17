@@ -38,6 +38,20 @@ export function KpiFormModal({
   const err = (k: string) => (errors[k] ? t.errors[errors[k]] : undefined);
   const set = (k: keyof KpiInput) => (e: { target: { value: string } }) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
+  const handlePeriodChange = (nextPeriod: string) => {
+    const existingEntry = kpi?.history?.find((h) => h.period === nextPeriod);
+    if (existingEntry) {
+      setForm((f) => ({
+        ...f,
+        period: nextPeriod,
+        target: String(existingEntry.target),
+        actual: existingEntry.actual === null ? "" : String(existingEntry.actual),
+      }));
+    } else {
+      setForm((f) => ({ ...f, period: nextPeriod }));
+    }
+  };
+
   const submit = (e: FormEvent) => {
     e.preventDefault();
     startTransition(async () => {
@@ -120,9 +134,48 @@ export function KpiFormModal({
             <Input id="kpi-actual" inputMode="decimal" value={form.actual} onChange={set("actual")} invalid={!!errors.actual} className="bg-surface" />
           </Field>
           <Field label={t.kpi.period} htmlFor="kpi-period" required error={err("period")}>
-            <Input id="kpi-period" type="month" value={form.period} onChange={set("period")} invalid={!!errors.period} className="bg-surface" />
+            <Input
+              id="kpi-period"
+              type="month"
+              value={form.period}
+              onChange={(e) => handlePeriodChange(e.target.value)}
+              invalid={!!errors.period}
+              className="bg-surface"
+            />
           </Field>
         </div>
+
+        {kpi?.history && kpi.history.length > 0 && (
+          <div className="rounded-control border border-border bg-page p-3.5">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <p className="text-xs font-bold text-text">ประวัติผลการวัดรายเดือน (คลิกเลือกเดือนเพื่อดูหรือแก้ไข)</p>
+              <span className="text-[11px] text-text-muted">เก็บประวัติแยกตามเดือนอัตโนมัติ</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {kpi.history.map((h) => {
+                const active = form.period === h.period;
+                return (
+                  <button
+                    key={h.period}
+                    type="button"
+                    onClick={() => handlePeriodChange(h.period)}
+                    className={`rounded-lg border px-2.5 py-1.5 text-left text-xs transition-colors cursor-pointer ${
+                      active
+                        ? "border-primary bg-primary/10 font-bold text-primary"
+                        : "border-border bg-surface text-text hover:border-primary/40"
+                    }`}
+                  >
+                    <span className="block text-[11px] text-text-muted">{h.period}</span>
+                    <span className="tabular-nums">
+                      Actual: <strong>{h.actual === null ? "–" : `${h.actual}${kpi.unit ? ` ${kpi.unit}` : ""}`}</strong>{" "}
+                      <span className="text-[11px] text-text-muted">(เป้า {h.target})</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </form>
     </Modal>
   );

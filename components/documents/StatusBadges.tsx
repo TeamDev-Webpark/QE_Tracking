@@ -13,6 +13,7 @@ const docTones: Record<DocumentStatus, BadgeTone> = {
 
 const versionTones: Record<VersionStatus, BadgeTone> = {
   draft: "info",
+  pending_review: "warning",
   published: "success",
   superseded: "neutral",
 };

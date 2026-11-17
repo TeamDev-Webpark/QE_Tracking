@@ -16,6 +16,8 @@ import { DocumentPreviewModal } from "./DocumentPreviewModal";
 import { DocumentStatusBadge, DocumentTypeBadge, ReviewStatusBadge } from "./StatusBadges";
 import { DownloadMessage, QuotaText } from "./DownloadParts";
 import { useDownload } from "./useDownload";
+import { DocumentFormDesigner } from "./designer/DocumentFormDesigner";
+import { DocumentFormFiller } from "./designer/DocumentFormFiller";
 
 type QuickTab = "all" | DocumentStatus | "needs_review";
 
@@ -35,6 +37,7 @@ export function DocumentList({
   const canSeeAll = role === "admin" || role === "qe" || role === "iso";
   const [adding, setAdding] = useState(false);
   const [previewDoc, setPreviewDoc] = useState<DocumentView>();
+  const [formModalDoc, setFormModalDoc] = useState<{ doc: DocumentView; mode: "fill" | "design" } | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const deferredSearch = useDeferredValue(searchQuery);
   const [deptFilter, setDeptFilter] = useState<string>("all");
@@ -177,6 +180,15 @@ export function DocumentList({
             >
               {t.documents.preview}
             </Button>
+            <button
+              type="button"
+              onClick={() => setFormModalDoc({ doc: d, mode: "fill" })}
+              className="inline-flex h-8 items-center justify-center gap-1 rounded-control border border-sky-200 bg-white px-2.5 text-xs font-semibold text-sky-600 hover:bg-sky-50 hover:border-sky-300 hover:text-sky-700 transition-colors whitespace-nowrap"
+              title="เปิดกรอกแบบฟอร์ม / ดูประวัติบันทึก"
+            >
+              <span>📝</span>
+              <span>ฟอร์ม</span>
+            </button>
             <Link
               href={`/documents/${d.id}`}
               className="inline-flex h-8 items-center rounded-control border border-border bg-surface px-2.5 text-xs font-semibold whitespace-nowrap hover:bg-page transition-colors"
@@ -378,6 +390,25 @@ export function DocumentList({
           onClose={() => setPreviewDoc(undefined)}
           onDownload={() => download(previewDoc.id)}
           downloading={pending}
+        />
+      )}
+      {formModalDoc && formModalDoc.mode === "design" && (
+        <DocumentFormDesigner
+          documentId={formModalDoc.doc.id}
+          documentCode={formModalDoc.doc.code}
+          documentTitle={formModalDoc.doc.title}
+          onClose={() => setFormModalDoc(null)}
+          onOpenFiller={() => setFormModalDoc({ doc: formModalDoc.doc, mode: "fill" })}
+        />
+      )}
+      {formModalDoc && formModalDoc.mode === "fill" && (
+        <DocumentFormFiller
+          documentId={formModalDoc.doc.id}
+          documentCode={formModalDoc.doc.code}
+          documentTitle={formModalDoc.doc.title}
+          canDesign={canManage}
+          onClose={() => setFormModalDoc(null)}
+          onOpenDesigner={() => setFormModalDoc({ doc: formModalDoc.doc, mode: "design" })}
         />
       )}
     </>

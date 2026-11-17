@@ -105,3 +105,21 @@ input[type="search"]::-webkit-search-decoration {
 input[type="search"]::-webkit-search-cancel-button {
   cursor: pointer;
 }
+
+/* Completely suppress native browser video controls in custom player */
+video.no-native-controls::-webkit-media-controls,
+video.no-native-controls::-webkit-media-controls-enclosure,
+video.no-native-controls::-webkit-media-controls-panel,
+video.no-native-controls::-webkit-media-controls-play-button,
+video.no-native-controls::-webkit-media-controls-timeline,
+video.no-native-controls::-webkit-media-controls-current-time-display,
+video.no-native-controls::-webkit-media-controls-time-remaining-display,
+video.no-native-controls::-webkit-media-controls-mute-button,
+video.no-native-controls::-webkit-media-controls-volume-slider,
+video.no-native-controls::-webkit-media-controls-fullscreen-button {
+  display: none !important;
+  -webkit-appearance: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}

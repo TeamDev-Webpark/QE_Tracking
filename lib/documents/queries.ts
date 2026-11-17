@@ -54,9 +54,14 @@ function toView(doc: IsoDocument, db: DemoDb, user: User): DocumentView {
   const isPrivileged = user.role === "admin" || user.role === "qe" || user.role === "iso";
   const canManage = user.role === "admin" || user.role === "qe";
   const s = db.standards.find((s) => s.id === doc.standardId);
-  const versions = [...doc.versions].reverse().filter((v) => isPrivileged || v.status !== "draft");
+  const versions = [...doc.versions]
+    .reverse()
+    .filter((v) => isPrivileged || (v.status !== "draft" && v.status !== "pending_review"));
   const canDeleteDraft =
-    canManage && !doc.cancelled && doc.versions.length === 1 && doc.versions[0]?.status === "draft";
+    canManage &&
+    !doc.cancelled &&
+    doc.versions.length === 1 &&
+    (doc.versions[0]?.status === "draft" || doc.versions[0]?.status === "pending_review");
   const view: DocumentView = {
     id: doc.id,
     code: doc.code,

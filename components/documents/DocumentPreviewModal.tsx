@@ -122,6 +122,51 @@ export function DocumentPreviewModal({
             </div>
           )}
         </div>
+
+        {/* Approval Matrix */}
+        {currentVersion && (
+          <div className="rounded-control border border-border bg-page p-3.5">
+            <p className="mb-2 text-xs font-bold text-text">
+              การรับรองและอนุมัติเอกสาร (Approval Matrix — Rev.{currentVersion.version})
+            </p>
+            <div className="grid gap-2.5 sm:grid-cols-3 text-xs">
+              <div className="rounded border border-border/70 bg-surface p-2.5">
+                <p className="text-text-muted">ผู้จัดทำ (Prepared by)</p>
+                <p className="mt-0.5 font-bold text-text">
+                  {(() => {
+                    const u = getUserById(currentVersion.createdBy);
+                    return u ? displayName(u, lang) : "-";
+                  })()}
+                </p>
+                <p className="text-[11px] text-text-muted">{formatDateTime(currentVersion.createdAt, lang)}</p>
+              </div>
+              <div className="rounded border border-border/70 bg-surface p-2.5">
+                <p className="text-text-muted">ผู้ทบทวน (Reviewed by)</p>
+                <p className="mt-0.5 font-bold text-text">
+                  {(() => {
+                    const u = currentVersion.reviewedBy ? getUserById(currentVersion.reviewedBy) : undefined;
+                    return u ? displayName(u, lang) : "รอผู้ทบทวนตรวจสอบ";
+                  })()}
+                </p>
+                {currentVersion.reviewedAt && (
+                  <p className="text-[11px] text-text-muted">{formatDateTime(currentVersion.reviewedAt, lang)}</p>
+                )}
+              </div>
+              <div className="rounded border border-border/70 bg-surface p-2.5">
+                <p className="text-text-muted">ผู้อนุมัติ (Approved by)</p>
+                <p className="mt-0.5 font-bold text-text">
+                  {(() => {
+                    const u = currentVersion.publishedBy ? getUserById(currentVersion.publishedBy) : undefined;
+                    return u ? displayName(u, lang) : "รออนุมัติประกาศใช้";
+                  })()}
+                </p>
+                {currentVersion.publishedAt && (
+                  <p className="text-[11px] text-text-muted">{formatDateTime(currentVersion.publishedAt, lang)}</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </Modal>
   );

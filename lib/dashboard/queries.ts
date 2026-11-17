@@ -42,6 +42,16 @@ export async function getInspectionItems(departmentId?: string): Promise<Inspect
 export type OverdueCar = { id: string; number: string; title: string; departmentId: string; dueDate: string; days: number };
 export type MissedKpi = { id: string; name: string; actual: number; target: number; unit: string; departmentId: string };
 
+export type UpcomingAuditItem = {
+  id: string;
+  code: string;
+  title: string;
+  departmentId: string;
+  scheduledDate: string; // YYYY-MM-DD (Date only)
+  scope: string;
+  status: "planned" | "in_progress";
+};
+
 export type AuditInspectionSummary = {
   totalPlans: number;
   completedPlans: number;
@@ -51,6 +61,7 @@ export type AuditInspectionSummary = {
   observationFindings: number;
   ncFindings: number;
   passRate: number;
+  upcomingAudits: UpcomingAuditItem[];
 };
 
 export type Overview = {
@@ -123,6 +134,19 @@ export async function getOverview(user: User): Promise<Overview> {
   }
 
   const passRate = totalFindings > 0 ? Math.round((conformingFindings / totalFindings) * 100) : 0;
+  const upcomingAudits: UpcomingAuditItem[] = userAudits
+    .filter((a) => a.status === "planned" || a.status === "in_progress")
+    .map((a) => ({
+      id: a.id,
+      code: a.code,
+      title: a.title,
+      departmentId: a.departmentId,
+      scheduledDate: a.scheduledDate,
+      scope: a.scope,
+      status: a.status as "planned" | "in_progress",
+    }))
+    .sort((a, b) => (a.scheduledDate || "").localeCompare(b.scheduledDate || ""));
+
   const auditSummary: AuditInspectionSummary = {
     totalPlans: userAudits.length,
     completedPlans: userAudits.filter((a) => a.status === "completed").length,
@@ -132,6 +156,7 @@ export async function getOverview(user: User): Promise<Overview> {
     observationFindings,
     ncFindings,
     passRate,
+    upcomingAudits,
   };
 
   return {

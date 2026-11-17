@@ -18,6 +18,10 @@ const nextConfig: NextConfig = {
   ],
   experimental: {
     reactDebugChannel: false,
+    proxyClientMaxBodySize: 500 * 1024 * 1024,
+    serverActions: {
+      bodySizeLimit: "500mb",
+    },
   },
   turbopack: {
     rules: {

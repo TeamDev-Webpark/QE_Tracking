@@ -62,6 +62,14 @@ export function DashboardView({ items, overview }: { items: InspectionItem[]; ov
     })
     .sort((a, b) => b.summary.total - a.summary.total || a.label.localeCompare(b.label));
 
+  const byClause: ChartRow[] = groupSummaries(activeItems, (i) => i.clause)
+    .map((g) => ({
+      key: g.key,
+      label: `ข้อกำหนด ${g.key}`,
+      summary: g.summary,
+    }))
+    .sort((a, b) => a.key.localeCompare(b.key, undefined, { numeric: true }));
+
   const selectedStandardLabel =
     selectedStandard === "all"
       ? undefined
@@ -187,6 +195,54 @@ export function DashboardView({ items, overview }: { items: InspectionItem[]; ov
         </span>
       </div>
 
+      {/* Upcoming Internal Audit Notice (Topic/Scope only, no date/time) */}
+      {(() => {
+        const deptAudits = (overview.auditSummary.upcomingAudits ?? []).filter(
+          (a) => !isPrivileged || selectedDept === "all" || a.departmentId === selectedDept,
+        );
+        if (deptAudits.length === 0) return null;
+        return (
+          <div className="mb-5 rounded-card border border-amber-300 bg-amber-50/90 px-4 py-3 text-xs text-amber-950">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="font-bold text-sm">
+                🔔 แจ้งเตือนเรื่องที่จะเข้าตรวจติดตามภายใน (Internal Audit)
+              </p>
+              <span className="rounded-full bg-amber-200/80 px-2.5 py-0.5 text-[11px] font-bold text-amber-950">
+                แจ้งเฉพาะหัวข้อที่ตรวจ · ไม่ระบุวันและเวลาเข้าตรวจ
+              </span>
+            </div>
+            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+              {deptAudits.map((a) => (
+                <div
+                  key={a.id}
+                  className="flex items-start justify-between gap-3 rounded-lg border border-amber-200 bg-white px-3 py-2.5"
+                >
+                  <div className="min-w-0 space-y-1">
+                    <p className="font-bold text-text">
+                      <span className="font-mono text-primary">{a.code}</span> · {a.title}
+                    </p>
+                    {a.scope && (
+                      <p className="text-xs text-text">
+                        <strong className="font-semibold text-amber-900">เรื่องที่ตรวจ:</strong> {a.scope}
+                      </p>
+                    )}
+                    <p className="text-[11px] text-text-muted">
+                      แผนก: {departmentName(a.departmentId, lang)}
+                    </p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <span className="inline-block rounded bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-900">
+                      สุ่มตรวจหน้างาน
+                    </span>
+                    <span className="mt-0.5 block text-[10px] text-text-muted">ไม่ระบุวัน-เวลา</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Summary KPI Tiles */}
       <div className="mb-5 sm:mb-6 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-5">
         <StatTile
@@ -247,7 +303,7 @@ export function DashboardView({ items, overview }: { items: InspectionItem[]; ov
         auditSummary={overview.auditSummary}
       />
 
-      <div className={isPrivileged ? "mb-6 grid gap-6 lg:grid-cols-2" : "mb-6"}>
+      <div className="mb-6 grid gap-6 lg:grid-cols-2">
         <Card>
           <CardTitle>{isPrivileged ? t.dashboard.byStandard : t.dashboard.passRateByStandard}</CardTitle>
           <p className="mb-4 text-xs text-text-muted">{t.dashboard.chartNote}</p>
@@ -262,7 +318,7 @@ export function DashboardView({ items, overview }: { items: InspectionItem[]; ov
             }}
           />
         </Card>
-        {isPrivileged && (
+        {isPrivileged ? (
           <Card>
             <CardTitle>{t.dashboard.byDepartment}</CardTitle>
             <p className="mb-4 text-xs text-text-muted">{t.dashboard.chartNote}</p>
@@ -273,6 +329,19 @@ export function DashboardView({ items, overview }: { items: InspectionItem[]; ov
               selectedKey={selectedDept}
               onRowClick={(row) => {
                 setSelectedDept(row.key);
+                listRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }}
+            />
+          </Card>
+        ) : (
+          <Card>
+            <CardTitle>ผลการตรวจแยกตามข้อกำหนด ISO ({departmentName(user.departmentId, lang)})</CardTitle>
+            <p className="mb-4 text-xs text-text-muted">{t.dashboard.chartNote}</p>
+            <ResultsBarChart
+              rows={byClause}
+              groupLabel={t.checklist.clause}
+              pageSize={8}
+              onRowClick={() => {
                 listRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
               }}
             />

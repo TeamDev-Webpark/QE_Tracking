@@ -49,8 +49,13 @@ export async function getIsoReportSummary() {
   const closedNcs = db.nonconformities.length - openNcs;
   const overdueNcs = db.nonconformities.filter((n) => isOverdue(n, today)).length;
 
+  const activeRiskScore = (r: { likelihood: number; impact: number; residualLikelihood?: number; residualImpact?: number }) =>
+    r.residualLikelihood && r.residualImpact
+      ? riskScore(r.residualLikelihood, r.residualImpact)
+      : riskScore(r.likelihood, r.impact);
+
   const highRisks = db.risks.filter((r) => {
-    const lv = riskLevel(riskScore(r.likelihood, r.impact));
+    const lv = riskLevel(activeRiskScore(r));
     return lv === "high" || lv === "critical";
   }).length;
   const closedOrMonitoredRisks = db.risks.filter((r) => r.status === "monitored" || r.status === "closed").length;
@@ -95,7 +100,7 @@ export async function getIsoReportSummary() {
       openNcCount: deptNcs.filter((n) => n.status !== "closed").length,
       overdueNcCount: deptNcs.filter((n) => isOverdue(n, today)).length,
       highRiskCount: deptRisks.filter((r) => {
-        const lv = riskLevel(riskScore(r.likelihood, r.impact));
+        const lv = riskLevel(activeRiskScore(r));
         return (lv === "high" || lv === "critical") && r.status !== "closed";
       }).length,
       kpiMetCount: deptKpis.filter((k) => evaluateKpi(k).status === "achieved").length,

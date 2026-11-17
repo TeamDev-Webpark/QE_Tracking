@@ -54,7 +54,13 @@ export function KpiBullet({ kpi }: { kpi: KpiView }) {
  * One card per KPI: full name, big Actual, Target, a meter with the target tick, and the status.
  * Each card has its own scale (KPIs use different units), so nothing is compared across cards by length.
  */
-export function KpiCards({ kpis }: { kpis: KpiView[] }) {
+export function KpiCards({
+  kpis,
+  onViewHistory,
+}: {
+  kpis: KpiView[];
+  onViewHistory?: (kpi: KpiView) => void;
+}) {
   const { lang, t } = useI18n();
   return (
     <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -65,9 +71,20 @@ export function KpiCards({ kpis }: { kpis: KpiView[] }) {
         const ok = k.result.status === "achieved";
         return (
           <li key={k.id} className="flex flex-col rounded-card border border-border/70 p-4">
-            <p className="line-clamp-2 min-h-10 font-bold" title={k.name}>
-              {k.name}
-            </p>
+            <div className="flex items-start justify-between gap-2">
+              <p className="line-clamp-2 min-h-10 font-bold" title={k.name}>
+                {k.name}
+              </p>
+              {onViewHistory && k.history && k.history.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => onViewHistory(k)}
+                  className="shrink-0 rounded-md border border-border bg-page px-2 py-1 text-[11px] font-semibold text-primary hover:border-primary/40 hover:bg-primary/5 transition-colors cursor-pointer"
+                >
+                  ประวัติ ({k.history.length})
+                </button>
+              )}
+            </div>
             <p className="text-xs text-text-muted">{departmentName(k.departmentId, lang)}</p>
 
             <div className="mt-3 flex items-end justify-between gap-3">

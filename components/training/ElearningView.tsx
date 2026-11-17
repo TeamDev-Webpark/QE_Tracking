@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { Badge, Button, Card, PageHeader, useToast } from "@/components/ui";
 import { StatTile } from "@/components/dashboard/StatTile";
 import { useI18n } from "@/components/providers/I18nProvider";
@@ -14,6 +14,7 @@ import {
 } from "@/data/elearningCurriculum";
 import { submitElearningResult } from "@/lib/training/elearningActions";
 import { ElearningEditorModal } from "./ElearningEditorModal";
+import { LessonVideoPlayer, type ChapterQuizCompletionResult } from "./LessonVideoPlayer";
 
 export type ElearningCourseItem = {
   id: string;
@@ -48,17 +49,41 @@ export function ElearningView({
   const canManage = user.role === "admin" || user.role === "qe";
   const toast = useToast();
 
+  const [courseList, setCourseList] = useState(courses);
+
+  useEffect(() => {
+    setCourseList(courses);
+  }, [courses]);
+
   const [activeCourse, setActiveCourse] = useState<ElearningCourseItem | null>(null);
   const [editingCourse, setEditingCourse] = useState<ElearningCourseItem | null>(null);
   const [stage, setStage] = useState<Stage>({ type: "chapter", index: 0 });
   const [completedChapters, setCompletedChapters] = useState<Set<string>>(new Set());
   const [checkedTakeaway, setCheckedTakeaway] = useState<Record<string, boolean>>({});
+  const [chapterQuizResults, setChapterQuizResults] = useState<
+    Record<string, ChapterQuizCompletionResult>
+  >({});
+  const [chapterRetakeCounter, setChapterRetakeCounter] = useState<Record<string, number>>({});
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [examResult, setExamResult] = useState<{ score: number; passed: boolean } | null>(null);
   const [pending, startTransition] = useTransition();
 
-  const passedCount = courses.filter((c) => c.myRecord?.status === "completed" && c.myRecord.passed).length;
-  const remainingCount = courses.length - passedCount;
+  const handleCurriculumSaved = (updatedCurriculum: CourseCurriculum) => {
+    if (!editingCourse) return;
+    const targetId = editingCourse.id;
+    setCourseList((prev) =>
+      prev.map((c) => (c.id === targetId ? { ...c, curriculum: updatedCurriculum } : c)),
+    );
+    setActiveCourse((prev) => {
+      if (prev?.id === targetId) {
+        return { ...prev, curriculum: updatedCurriculum };
+      }
+      return prev;
+    });
+  };
+
+  const passedCount = courseList.filter((c) => c.myRecord?.status === "completed" && c.myRecord.passed).length;
+  const remainingCount = courseList.length - passedCount;
 
   const resolveCurriculum = (course: ElearningCourseItem) =>
     course.curriculum ?? getCourseCurriculum(course.name, course.description);
@@ -75,6 +100,8 @@ export function ElearningView({
     } else {
       setCompletedChapters(new Set());
       setCheckedTakeaway({});
+      setChapterQuizResults({});
+      setChapterRetakeCounter({});
       setExamResult(null);
       setStage({ type: "chapter", index: 0 });
     }
@@ -82,7 +109,7 @@ export function ElearningView({
   };
 
   if (activeCourse) {
-    const liveCourse = courses.find((c) => c.id === activeCourse.id) ?? activeCourse;
+    const liveCourse = courseList.find((c) => c.id === activeCourse.id) ?? activeCourse;
     const curriculum = resolveCurriculum(liveCourse);
     const totalChapters = curriculum.chapters.length;
     const doneChapters = curriculum.chapters.filter((ch) => completedChapters.has(ch.id)).length;
@@ -90,6 +117,65 @@ export function ElearningView({
     const progressPct = Math.round(
       ((doneChapters + (examResult?.passed ? 1 : 0)) / (totalChapters + 1)) * 100,
     );
+
+    // Aggregate in-video checkpoint quiz answers from all chapters in this course (computed inline without conditional hook)
+    const courseCheckpointSummary = (() => {
+      let totalCourseCheckpoints = 0;
+      let totalCorrectCheckpoints = 0;
+      const chapterBreakdown: Array<{
+        chapterId: string;
+        chapterTitle: string;
+        total: number;
+        correct: number;
+        passed: boolean;
+      }> = [];
+
+      for (const ch of curriculum.chapters) {
+        const res = chapterQuizResults[ch.id];
+        const chTotal = ch.videoCheckpoints && ch.videoCheckpoints.length > 0 ? ch.videoCheckpoints.length : 1;
+        totalCourseCheckpoints += chTotal;
+        const chCorrect = res ? res.correctCount : 0;
+        totalCorrectCheckpoints += chCorrect;
+        chapterBreakdown.push({
+          chapterId: ch.id,
+          chapterTitle: ch.title,
+          total: chTotal,
+          correct: chCorrect,
+          passed: res ? res.correctCount === chTotal : false,
+        });
+      }
+
+      const scorePct =
+        totalCourseCheckpoints > 0
+          ? Math.round((totalCorrectCheckpoints / totalCourseCheckpoints) * 100)
+          : 100;
+      const isPassed = totalCourseCheckpoints === 0 || scorePct >= 80;
+
+      return {
+        totalCourseCheckpoints,
+        totalCorrectCheckpoints,
+        scorePct,
+        isPassed,
+        chapterBreakdown,
+      };
+    })();
+
+    const handleRetakeCourse = () => {
+      setCompletedChapters(new Set());
+      setChapterQuizResults({});
+      setCheckedTakeaway({});
+      setChapterRetakeCounter((prev) => {
+        const next = { ...prev };
+        curriculum.chapters.forEach((ch) => {
+          next[ch.id] = (next[ch.id] || 0) + 1;
+        });
+        return next;
+      });
+      setAnswers({});
+      setExamResult(null);
+      setStage({ type: "chapter", index: 0 });
+      toast.info("ระบบรีเซ็ตบทเรียนและคำถามทั้งหมดแล้ว กรุณาเริ่มเรียนและตอบคำถามใหม่ตั้งแต่บทที่ 1");
+    };
 
     const markChapterComplete = (chapter: LessonChapter, idx: number) => {
       if (!checkedTakeaway[chapter.id]) {
@@ -108,6 +194,12 @@ export function ElearningView({
     };
 
     const handleSubmitExam = () => {
+      if (!courseCheckpointSummary.isPassed) {
+        toast.error(
+          "ไม่สามารถส่งข้อสอบได้: ผลการประเมินคำถามระหว่างบทเรียนไม่ผ่านเกณฑ์ กรุณากด 'เริ่มเรียนใหม่และสอบแก้ตัวทุกบทเรียน' ด้านบน",
+        );
+        return;
+      }
       if (Object.keys(answers).length < curriculum.questions.length) {
         toast.error(`กรุณาตอบคำถามให้ครบทั้ง ${curriculum.questions.length} ข้อก่อนส่งกระดาษคำตอบ`);
         return;
@@ -250,7 +342,9 @@ export function ElearningView({
                       <p className={`mt-0.5 text-[11px] ${!isUnlocked ? "font-medium text-danger/80" : "text-text-muted"}`}>
                         {!isUnlocked
                           ? `กดไม่ได้ — ต้องเรียนและกดบันทึกจบบทที่ ${idx} ก่อน`
-                          : `${ch.clauseRef} · ${ch.durationMin} นาที`}
+                          : isDone
+                            ? `เรียนจบบทนี้แล้ว · ${ch.clauseRef}`
+                            : `${ch.clauseRef} · ${ch.durationMin} นาที`}
                       </p>
                     </div>
                   </button>
@@ -353,122 +447,45 @@ export function ElearningView({
                     <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
                       <Badge tone="primary">{chapter.clauseRef}</Badge>
                       <span className="font-semibold text-text-muted">
-                        บทที่ {stage.index + 1} จาก {totalChapters} · เวลาศึกษาประมาณ {chapter.durationMin} นาที
+                        🎬 วิดีโอบทที่ {stage.index + 1} จาก {totalChapters} · ความยาว {chapter.durationMin} นาที
                       </span>
                     </div>
                     <h2 className="text-base sm:text-lg font-extrabold text-text">{chapter.title}</h2>
                   </div>
 
-                  {/* Learning Objectives */}
-                  <div className="space-y-2">
-                    <h3 className="text-sm font-bold text-text">🎯 วัตถุประสงค์การเรียนรู้ประจำบท</h3>
-                    <ul className="list-disc pl-5 space-y-1 text-xs sm:text-sm text-text">
-                      {chapter.objectives.map((obj, i) => (
-                        <li key={i}>{obj}</li>
-                      ))}
-                    </ul>
-                  </div>
+                  {/* Interactive Lesson Video Player */}
+                  <LessonVideoPlayer
+                    key={`${chapter.id}-${chapterRetakeCounter[chapter.id] || 0}`}
+                    courseCode={activeCourse.code}
+                    instructor={curriculum.instructor}
+                    chapter={chapter}
+                    chapterIndex={stage.index}
+                    totalChapters={totalChapters}
+                    onVideoCompleted={(result) => {
+                      if (result) {
+                        setChapterQuizResults((prev) => ({ ...prev, [chapter.id]: result }));
+                      }
+                      setCheckedTakeaway((prev) => ({ ...prev, [chapter.id]: true }));
+                    }}
+                  />
 
-                  {/* Detailed Lecture Articles & Reference Tables */}
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-bold text-text">📘 เนื้อหาบทเรียนฉบับเต็ม (ศึกษาให้ครบก่อนทำข้อสอบ)</h3>
-                    {chapter.articles.map((art, aIdx) => (
-                      <div key={aIdx} className="rounded-xl border border-border bg-surface p-4 sm:p-5 space-y-3 shadow-2xs">
-                        <h4 className="text-sm sm:text-base font-extrabold text-primary">{art.heading}</h4>
-                        {art.paragraphs.map((p, pIdx) => (
-                          <p key={pIdx} className="text-xs sm:text-sm text-text leading-relaxed">
-                            {p}
-                          </p>
-                        ))}
-                        {art.bullets && art.bullets.length > 0 && (
-                          <ul className="space-y-1.5 rounded-lg bg-page/70 p-3.5 text-xs sm:text-sm text-text">
-                            {art.bullets.map((b, bIdx) => (
-                              <li key={bIdx} className="leading-relaxed">
-                                {b}
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                        {art.table && (
-                          <div className="overflow-x-auto lg:overflow-x-visible rounded-lg border border-border/80">
-                            <table className="w-full text-left text-xs sm:text-sm">
-                              <thead>
-                                <tr className="bg-page border-b border-border/80">
-                                  {art.table.headers.map((h, hIdx) => (
-                                    <th key={hIdx} className="px-3 py-2.5 font-bold text-text">
-                                      {h}
-                                    </th>
-                                  ))}
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {art.table.rows.map((row, rIdx) => (
-                                  <tr key={rIdx} className="border-b border-border/60 last:border-b-0 hover:bg-page/40">
-                                    {row.map((cell, cIdx) => (
-                                      <td
-                                        key={cIdx}
-                                        className={`px-3 py-2.5 align-top ${cIdx === 0 ? "font-bold text-primary whitespace-nowrap" : "text-text"}`}
-                                      >
-                                        {cell}
-                                      </td>
-                                    ))}
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Core Concepts */}
-                  <div className="space-y-3">
-                    <h3 className="text-sm font-bold text-text">🔑 สรุปประเด็นสำคัญที่ต้องจำ</h3>
-                    <div className="grid gap-3">
-                      {chapter.keyConcepts.map((kc, i) => (
-                        <div key={i} className="rounded-xl border border-border/80 bg-page/60 p-3.5 space-y-1">
-                          <p className="text-xs sm:text-sm font-bold text-primary">{kc.heading}</p>
-                          <p className="text-xs sm:text-sm text-text leading-relaxed">{kc.detail}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Practical Guidelines */}
-                  {chapter.guidelines.length > 0 && (
-                    <div className="rounded-xl border border-primary/20 bg-primary-soft/20 p-4 space-y-2">
-                      <h3 className="text-sm font-bold text-text">
-                        📋 แนวทางปฏิบัติและจุดตรวจสอบสำหรับผู้ปฏิบัติงาน
-                      </h3>
-                      <ul className="space-y-1.5 text-xs sm:text-sm text-text">
-                        {chapter.guidelines.map((g, i) => (
-                          <li key={i} className="flex items-start gap-2">
-                            <span className="font-bold text-primary">✓</span>
-                            <span>{g}</span>
-                          </li>
+                  {/* Compact Key Takeaways & Case Study Summary below video */}
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-xl border border-border/80 bg-page/60 p-3.5 space-y-1.5">
+                      <p className="text-xs font-bold text-primary">🎯 วัตถุประสงค์ของวิดีโอบทนี้</p>
+                      <ul className="list-disc pl-4 space-y-1 text-xs text-text">
+                        {chapter.objectives.map((obj, i) => (
+                          <li key={i}>{obj}</li>
                         ))}
                       </ul>
                     </div>
-                  )}
 
-                  {/* Real-world Case Study */}
-                  <div className="rounded-xl border border-border bg-surface p-4 space-y-3">
-                    <h3 className="text-sm font-bold text-text">
-                      💡 กรณีศึกษาจากหน้างานจริง (Case Study)
-                    </h3>
-                    <p className="text-xs sm:text-sm text-text bg-page p-3 rounded-lg">
-                      <strong>สถานการณ์:</strong> {chapter.caseStudy.scenario}
-                    </p>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="rounded-lg border border-success/40 bg-success-soft/30 p-3 space-y-1">
-                        <p className="text-xs font-bold text-success">✓ แนวทางที่ถูกต้องตามมาตรฐาน ISO</p>
-                        <p className="text-xs text-text">{chapter.caseStudy.goodPractice}</p>
-                      </div>
-                      <div className="rounded-lg border border-danger/40 bg-danger-soft/30 p-3 space-y-1">
-                        <p className="text-xs font-bold text-danger">✗ ข้อบกพร่องที่พบบ่อย (ห้ามปฏิบัติ)</p>
-                        <p className="text-xs text-text">{chapter.caseStudy.badPractice}</p>
-                      </div>
+                    <div className="rounded-xl border border-border/80 bg-page/60 p-3.5 space-y-1.5">
+                      <p className="text-xs font-bold text-primary">💡 กรณีศึกษาจากหน้างานจริง</p>
+                      <p className="text-xs text-text">{chapter.caseStudy.scenario}</p>
+                      <p className="text-xs font-semibold text-success">
+                        ✓ แนวทางที่ถูก: {chapter.caseStudy.goodPractice}
+                      </p>
                     </div>
                   </div>
 
@@ -522,11 +539,11 @@ export function ElearningView({
                       >
                         {stage.index + 1 < totalChapters
                           ? "บันทึกเรียนจบบทนี้ & ไปบทถัดไป →"
-                          : "บันทึกเรียนจบบทสุดท้าย & เข้าสู่ห้องสอบ →"}
+                          : "บันทึกเรียนจบบทสุดท้าย & ประเมินผลและเข้าสู่ห้องสอบ →"}
                       </Button>
                       {!isChecked && (
                         <span className="text-[11px] font-medium text-danger">
-                          * ยังกดไปต่อไม่ได้จนกว่าจะติ๊ก ✓ ยืนยันความเข้าใจเนื้อหาด้านบน
+                          * กรุณาติ๊ก ✓ ยืนยันความเข้าใจเนื้อหาด้านบนก่อนไปบทถัดไป
                         </span>
                       )}
                     </div>
@@ -537,6 +554,89 @@ export function ElearningView({
 
             {stage.type === "exam" && (
               <div className="space-y-5">
+                {/* Overall Course In-Video Checkpoint Evaluation Card (Evaluated after completing all lessons) */}
+                <div
+                  className={`rounded-2xl border p-4 sm:p-5 space-y-3.5 ${
+                    courseCheckpointSummary.isPassed
+                      ? "border-success/40 bg-success-soft/30 text-text"
+                      : "border-danger/40 bg-danger-soft/30 text-text"
+                  }`}
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-2xl shadow-sm ${
+                          courseCheckpointSummary.isPassed
+                            ? "bg-success text-white"
+                            : "bg-danger text-white"
+                        }`}
+                      >
+                        {courseCheckpointSummary.isPassed ? "✓" : "⚠️"}
+                      </div>
+                      <div>
+                        <h3 className="text-sm sm:text-base font-extrabold text-text">
+                          {courseCheckpointSummary.isPassed
+                            ? "ผลการประเมินคำถามระหว่างบทเรียนทั้งหมด: ผ่านเกณฑ์เรียบร้อย"
+                            : "ผลการประเมินคำถามระหว่างบทเรียนทั้งหมด: ไม่ผ่านเกณฑ์"}
+                        </h3>
+                        <p className="text-xs text-text-muted">
+                          รวบรวมผลการตอบคำถามระหว่างคลิปครบทุกบทเรียน: ตอบถูก{" "}
+                          <strong className="text-text font-bold">
+                            {courseCheckpointSummary.totalCorrectCheckpoints} จาก {courseCheckpointSummary.totalCourseCheckpoints} ข้อ
+                          </strong>{" "}
+                          ({courseCheckpointSummary.scorePct}% · เกณฑ์ผ่าน 80%)
+                        </p>
+                      </div>
+                    </div>
+
+                    <Badge tone={courseCheckpointSummary.isPassed ? "success" : "danger"}>
+                      {courseCheckpointSummary.isPassed ? "✓ ผ่านเกณฑ์คำถามในคลิป" : "✗ ไม่ผ่าน — ต้องสอบแก้ตัว"}
+                    </Badge>
+                  </div>
+
+                  {!courseCheckpointSummary.isPassed ? (
+                    <div className="space-y-3 pt-1 border-t border-danger/20">
+                      <div className="rounded-xl bg-surface/80 border border-danger/30 p-3 text-xs space-y-1.5">
+                        <p className="font-extrabold text-danger">
+                          📢 คำเตือนพนักงาน ({learner.name}):
+                        </p>
+                        <p className="text-text leading-relaxed">
+                          ตามมาตรฐานการอบรม ISO คุณต้องตอบคำถามระหว่างคลิปให้ผ่านเกณฑ์ไม่ต่ำกว่า 80% ผลการตอบของคุณยังไม่ผ่านเกณฑ์ ระบบจึงแจ้งเตือนว่า <strong>&ldquo;ไม่ผ่านเกณฑ์&rdquo;</strong> และไม่อนุญาตให้ส่งผลสอบปลายภาค กรุณากดปุ่ม <strong>&ldquo;เริ่มเรียนใหม่และสอบแก้ตัวทุกบทเรียน&rdquo;</strong> ด้านล่างเพื่อทำการเรียนรู้ใหม่
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div className="flex flex-wrap gap-2 text-xs">
+                          {courseCheckpointSummary.chapterBreakdown.map((chB, i) => (
+                            <span
+                              key={chB.chapterId}
+                              className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold border ${
+                                chB.passed
+                                  ? "bg-success-soft/60 border-success/40 text-success"
+                                  : "bg-danger-soft/60 border-danger/40 text-danger"
+                              }`}
+                            >
+                              บทที่ {i + 1}: {chB.correct}/{chB.total} ข้อ {chB.passed ? "✓" : "✗"}
+                            </span>
+                          ))}
+                        </div>
+
+                        <Button
+                          variant="danger"
+                          onClick={handleRetakeCourse}
+                          className="font-bold shadow-md cursor-pointer shrink-0"
+                        >
+                          🔄 เริ่มเรียนใหม่และสอบแก้ตัวทุกบทเรียน (Retake & Retest)
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-text-muted leading-relaxed pt-1 border-t border-success/20">
+                      🎉 ยินดีด้วย! คุณผ่านเกณฑ์การทำความเข้าใจเนื้อหาระหว่างคลิปครบถ้วน สามารถทำแบบทดสอบวัดผลปลายภาคด้านล่างเพื่อรับใบรับรองการฝึกอบรม (E-Certificate)
+                    </p>
+                  )}
+                </div>
+
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-3">
                   <div>
                     <h2 className="text-base sm:text-lg font-extrabold text-text">
@@ -635,8 +735,16 @@ export function ElearningView({
                   >
                     ← กลับไปทบทวนบทเรียน
                   </Button>
-                  <Button variant="success" onClick={handleSubmitExam} disabled={pending}>
-                    {pending ? "กำลังตรวจและบันทึกผล..." : "ส่งกระดาษคำตอบ & บันทึกผล"}
+                  <Button
+                    variant={courseCheckpointSummary.isPassed ? "success" : "secondary"}
+                    onClick={handleSubmitExam}
+                    disabled={pending || !courseCheckpointSummary.isPassed}
+                  >
+                    {!courseCheckpointSummary.isPassed
+                      ? "🔒 ต้องผ่านเกณฑ์คำถามในคลิปก่อน (กดสอบแก้ตัวด้านบน)"
+                      : pending
+                        ? "กำลังตรวจและบันทึกผล..."
+                        : "ส่งกระดาษคำตอบ & บันทึกผล"}
                   </Button>
                 </div>
               </div>
@@ -709,6 +817,7 @@ export function ElearningView({
             courseName={editingCourse.name}
             initialCurriculum={resolveCurriculum(editingCourse)}
             onClose={() => setEditingCourse(null)}
+            onSaved={handleCurriculumSaved}
           />
         )}
       </div>
@@ -731,13 +840,13 @@ export function ElearningView({
       />
 
       <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
-        <StatTile label="หลักสูตรออนไลน์ทั้งหมด" value={`${courses.length} หลักสูตร`} icon="🎓" />
+        <StatTile label="หลักสูตรออนไลน์ทั้งหมด" value={`${courseList.length} หลักสูตร`} icon="🎓" />
         <StatTile label="เรียนและสอบผ่านแล้ว" value={`${passedCount} หลักสูตร`} accent="success" icon="✓" />
         <StatTile label="รอดำเนินการ / รอสอบ" value={`${remainingCount} หลักสูตร`} accent="neutral" icon="⏳" />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {courses.map((c) => {
+        {courseList.map((c) => {
           const rec = c.myRecord;
           const isPassed = rec?.status === "completed" && rec.passed;
           const curriculum = resolveCurriculum(c);
@@ -842,6 +951,7 @@ export function ElearningView({
           courseName={editingCourse.name}
           initialCurriculum={resolveCurriculum(editingCourse)}
           onClose={() => setEditingCourse(null)}
+          onSaved={handleCurriculumSaved}
         />
       )}
     </>

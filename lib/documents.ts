@@ -47,10 +47,10 @@ export function publishedVersion(doc: Pick<IsoDocument, "versions">): DocumentVe
   return doc.versions.find((v) => v.status === "published");
 }
 
-/** A draft waiting to be published, if any (always the latest version). */
+/** A draft or reviewed version waiting to be published, if any (always the latest version). */
 export function pendingDraft(doc: Pick<IsoDocument, "versions">): DocumentVersion | undefined {
   const latest = latestVersion(doc);
-  return latest?.status === "draft" ? latest : undefined;
+  return latest?.status === "draft" || latest?.status === "pending_review" ? latest : undefined;
 }
 
 /** cancelled > published (has an effective version) > draft. */

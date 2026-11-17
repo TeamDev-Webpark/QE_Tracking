@@ -21,7 +21,7 @@ export function AuditPlanModal({
   open: boolean;
   audit: AuditView | null;
   standards: { id: string; label: string }[];
-  auditors: { id: string; name: string; role: string }[];
+  auditors: { id: string; name: string; role: string; departmentId: string }[];
   nextCode: string;
   onClose: () => void;
 }) {
@@ -47,7 +47,7 @@ function AuditPlanInner({
 }: {
   audit: AuditView | null;
   standards: { id: string; label: string }[];
-  auditors: { id: string; name: string; role: string }[];
+  auditors: { id: string; name: string; role: string; departmentId: string }[];
   nextCode: string;
   onClose: () => void;
 }) {
@@ -55,20 +55,47 @@ function AuditPlanInner({
   const toast = useToast();
   const [pending, startTransition] = useTransition();
 
+  const defaultDept =
+    audit?.departmentId ??
+    departments.find((d) => d.id !== auditors[0]?.departmentId)?.id ??
+    departments[0]?.id ??
+    "";
+
   const [code, setCode] = useState(audit?.code ?? nextCode);
   const [title, setTitle] = useState(audit?.title ?? "");
   const [standardId, setStandardId] = useState(audit?.standardId ?? standards[0]?.id ?? "");
-  const [departmentId, setDepartmentId] = useState(audit?.departmentId ?? departments[0]?.id ?? "");
-  const [leadAuditorId, setLeadAuditorId] = useState(audit?.leadAuditorId ?? auditors[0]?.id ?? "");
+  const [departmentId, setDepartmentId] = useState(defaultDept);
+  const [leadAuditorId, setLeadAuditorId] = useState(
+    audit?.leadAuditorId ??
+      auditors.find((u) => u.departmentId !== defaultDept)?.id ??
+      auditors[0]?.id ??
+      "",
+  );
   const [scheduledDate, setScheduledDate] = useState(audit?.scheduledDate ?? todayInBangkok());
   const [scope, setScope] = useState(audit?.scope ?? "");
   const [fieldErrors, setFieldErrors] = useState<Record<string, FieldError>>({});
 
+  const selectedAuditor = auditors.find((u) => u.id === leadAuditorId);
+  const isSameDeptConflict = Boolean(selectedAuditor && selectedAuditor.departmentId === departmentId);
+
   const err = (k: string) => (fieldErrors[k] ? t.errors[fieldErrors[k]] : undefined);
+
+  function handleDepartmentChange(nextDeptId: string) {
+    setDepartmentId(nextDeptId);
+    const current = auditors.find((u) => u.id === leadAuditorId);
+    if (current && current.departmentId === nextDeptId) {
+      const independent = auditors.find((u) => u.departmentId !== nextDeptId);
+      if (independent) setLeadAuditorId(independent.id);
+    }
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setFieldErrors({});
+    if (isSameDeptConflict) {
+      toast.error("ผู้ตรวจติดตามต้องไม่สังกัดแผนกเดียวกับแผนกที่รับการตรวจ (ISO 9001 ข้อ 9.2.2)");
+      return;
+    }
     startTransition(async () => {
       const res = await saveAuditPlan(audit?.id ?? null, {
         code,
@@ -81,7 +108,11 @@ function AuditPlanInner({
       });
       if (!res.ok) {
         if (res.fieldErrors) setFieldErrors(res.fieldErrors);
-        else toast.error(t.errors.forbidden);
+        else if (res.error === "sameDepartmentAuditor") {
+          toast.error("ผู้ตรวจติดตามต้องไม่สังกัดแผนกเดียวกับแผนกที่รับการตรวจ (ISO 9001 ข้อ 9.2.2)");
+        } else {
+          toast.error(t.errors.forbidden);
+        }
         return;
       }
       toast.success("บันทึกแผนการตรวจประเมินเรียบร้อยแล้ว");
@@ -101,7 +132,7 @@ function AuditPlanInner({
           <Button variant="secondary" onClick={onClose} disabled={pending}>
             {t.common.cancel}
           </Button>
-          <Button type="submit" form="audit-plan-form" disabled={pending}>
+          <Button type="submit" form="audit-plan-form" disabled={pending || isSameDeptConflict}>
             {pending ? t.common.saving : t.common.save}
           </Button>
         </>
@@ -145,7 +176,7 @@ function AuditPlanInner({
             </Select>
           </Field>
           <Field htmlFor="audit-dept" label="แผนกที่รับการตรวจ" required error={err("departmentId")}>
-            <Select id="audit-dept" value={departmentId} onChange={(e) => setDepartmentId(e.target.value)}>
+            <Select id="audit-dept" value={departmentId} onChange={(e) => handleDepartmentChange(e.target.value)}>
               {departments.map((d) => (
                 <option key={d.id} value={d.id}>
                   {departmentName(d.id, lang)}
@@ -155,15 +186,36 @@ function AuditPlanInner({
           </Field>
         </div>
 
-        <Field htmlFor="audit-lead" label="หัวหน้าทีมผู้ตรวจ (Lead Auditor)" required error={err("leadAuditorId")}>
-          <Select id="audit-lead" value={leadAuditorId} onChange={(e) => setLeadAuditorId(e.target.value)}>
-            {auditors.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.name} ({u.role.toUpperCase()})
-              </option>
-            ))}
+        <Field
+          htmlFor="audit-lead"
+          label="หัวหน้าทีมผู้ตรวจ (Lead Auditor)"
+          hint="ตามข้อกำหนด ISO 9001 ข้อ 9.2.2 ผู้ตรวจต้องเป็นอิสระและไม่ตรวจงานของแผนกตนเอง"
+          required
+          error={err("leadAuditorId")}
+        >
+          <Select
+            id="audit-lead"
+            value={leadAuditorId}
+            onChange={(e) => setLeadAuditorId(e.target.value)}
+            invalid={isSameDeptConflict || !!fieldErrors.leadAuditorId}
+          >
+            {auditors.map((u) => {
+              const sameDept = u.departmentId === departmentId;
+              return (
+                <option key={u.id} value={u.id} disabled={sameDept}>
+                  {u.name} ({u.role.toUpperCase()} · {departmentName(u.departmentId, lang)})
+                  {sameDept ? " — [สังกัดแผนกที่รับการตรวจ ห้ามตรวจแผนกตนเอง]" : ""}
+                </option>
+              );
+            })}
           </Select>
         </Field>
+
+        {isSameDeptConflict && (
+          <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800">
+            <strong>ไม่สามารถเลือกผู้ตรวจท่านนี้ได้ (ISO 9001 ข้อ 9.2.2):</strong> หัวหน้าทีมผู้ตรวจ ({selectedAuditor?.name}) สังกัดอยู่ <strong>{departmentName(departmentId, lang)}</strong> ซึ่งเป็นแผนกเดียวกับที่รับการตรวจ กรุณาเลือกผู้ตรวจจากแผนกอื่น (หรือเพิ่มผู้ตรวจในหน้าตั้งค่า)
+          </div>
+        )}
 
         <Field htmlFor="audit-scope" label="ขอบเขต / ข้อกำหนดที่มุ่งเน้น">
           <Textarea

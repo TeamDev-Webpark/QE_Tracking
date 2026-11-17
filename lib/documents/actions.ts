@@ -34,6 +34,11 @@ async function requireAdmin() {
   return user?.role === "admin" || user?.role === "qe" ? user : undefined;
 }
 
+async function requireReviewer() {
+  const user = await getSessionUser();
+  return user?.role === "admin" || user?.role === "qe" || user?.role === "iso" ? user : undefined;
+}
+
 /** Whole number 0–MAX, or an error code. */
 function parseLimit(raw: unknown): number | DocFieldError {
   const s = clean(typeof raw === "number" ? String(raw) : raw);
@@ -191,7 +196,40 @@ export async function createVersion(id: string, changeNoteRaw: string): Promise<
   return { ok: true };
 }
 
-/** Publish the pending draft; the previous published version becomes superseded. Admin only. */
+/** Review a pending draft version (marks it as pending_review with reviewer info). Admin / QE / ISO. */
+export async function reviewDraftVersion(id: string, reviewNoteRaw: string): Promise<DocResult> {
+  const user = await requireReviewer();
+  if (!user) return fail("forbidden");
+  const db = await readDb();
+  const doc = db.documents.find((d) => d.id === id);
+  if (!doc) return fail("notFound");
+  const draft = pendingDraft(doc);
+  if (doc.cancelled || !draft || draft.status !== "draft") return fail("invalidState");
+  const reviewNote = clean(reviewNoteRaw);
+
+  await updateDb((db) => {
+    const d = db.documents.find((d) => d.id === id)!;
+    const pending = pendingDraft(d)!;
+    const now = new Date().toISOString();
+    pending.status = "pending_review";
+    pending.reviewedAt = now;
+    pending.reviewedBy = user.id;
+    if (reviewNote) pending.reviewNote = reviewNote;
+    db.auditLog.push(
+      auditEntry(user, "update", { type: "document", id, label: d.code }, {
+        changes: [
+          { field: "version", from: `${pending.version} (draft)`, to: `${pending.version} (pending_review)` },
+          { field: "reviewedBy", from: "", to: user.name },
+          ...(reviewNote ? [{ field: "reviewNote", from: "", to: reviewNote }] : []),
+        ],
+      }),
+    );
+  });
+  refresh();
+  return { ok: true };
+}
+
+/** Publish (approve) the pending draft/reviewed version; previous published version becomes superseded. Admin / QE only. */
 export async function publishDocument(id: string): Promise<DocResult> {
   const user = await requireAdmin();
   if (!user) return fail("forbidden");
@@ -206,6 +244,10 @@ export async function publishDocument(id: string): Promise<DocResult> {
     if (previous) previous.status = "superseded";
     const draft = pendingDraft(d)!;
     const now = new Date().toISOString();
+    if (!draft.reviewedBy) {
+      draft.reviewedBy = user.id;
+      draft.reviewedAt = now;
+    }
     draft.status = "published";
     draft.publishedAt = now;
     draft.publishedBy = user.id;
@@ -250,7 +292,8 @@ export async function deleteDocument(id: string): Promise<DocResult> {
   const db = await readDb();
   const doc = db.documents.find((d) => d.id === id);
   if (!doc) return fail("notFound");
-  if (doc.cancelled || doc.versions.length !== 1 || doc.versions[0]?.status !== "draft") {
+  const firstStatus = doc.versions[0]?.status;
+  if (doc.cancelled || doc.versions.length !== 1 || (firstStatus !== "draft" && firstStatus !== "pending_review")) {
     return fail("invalidState");
   }
 
@@ -390,6 +433,15 @@ export type DocumentPdfMeta = {
   changeNote: string;
   department: string;
   owner: string;
+  preparedBy: string;
+  preparedPosition: string;
+  preparedDate: string;
+  reviewedBy: string;
+  reviewedPosition: string;
+  reviewedDate: string;
+  approvedBy: string;
+  approvedPosition: string;
+  approvedDate: string;
   downloadedBy: string;
   downloadedAt: string;
 };
@@ -432,7 +484,11 @@ export async function downloadDocument(id: string): Promise<DownloadResult> {
 
   const s = db.standards.find((s) => s.id === doc.standardId);
   const dept = departments.find((d) => d.id === doc.departmentId);
-  const owner = getUserById(doc.ownerId);
+  const findUser = (uid?: string) => (uid ? db.users.find((u) => u.id === uid) ?? getUserById(uid) : undefined);
+  const owner = findUser(doc.ownerId);
+  const preparer = findUser(version.createdBy) ?? owner;
+  const reviewer = findUser(version.reviewedBy) ?? findUser("u2");
+  const approver = findUser(version.publishedBy) ?? findUser("u1");
 
   const docType = inferDocumentType(doc.code, doc.docType);
   const docMeta: DocumentPdfMeta = {
@@ -448,6 +504,15 @@ export async function downloadDocument(id: string): Promise<DownloadResult> {
     changeNote: version.changeNote || "–",
     department: dept ? dept.name : "-",
     owner: owner ? `${owner.name} (${owner.position || owner.nameEn})` : "-",
+    preparedBy: preparer ? preparer.name : "-",
+    preparedPosition: preparer?.position || "ผู้จัดทำเอกสาร",
+    preparedDate: version.createdAt,
+    reviewedBy: reviewer ? reviewer.name : "เจ้าหน้าที่ควบคุมเอกสาร",
+    reviewedPosition: reviewer?.position || "ผู้ทบทวนเอกสาร (ISO / DCC)",
+    reviewedDate: version.reviewedAt ?? version.publishedAt ?? "-",
+    approvedBy: approver ? approver.name : "ตัวแทนฝ่ายบริหารด้านคุณภาพ",
+    approvedPosition: approver?.position || "ผู้อนุมัติประกาศใช้ (QMR)",
+    approvedDate: version.publishedAt ?? "-",
     downloadedBy: `${user.name} (${user.role.toUpperCase()})`,
     downloadedAt: at,
   };

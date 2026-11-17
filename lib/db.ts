@@ -94,7 +94,14 @@ export async function readDb(): Promise<DemoDb> {
       training: parsed.training ?? structuredClone(seedTraining),
       trainingCourses: parsed.trainingCourses ?? structuredClone(seedTrainingCourses),
       audits: parsed.audits ?? structuredClone(seedAudits),
-      users: parsed.users?.length ? parsed.users : structuredClone(seedUsers).map((u) => ({ ...u, active: u.active ?? true })),
+      users: parsed.users?.length
+        ? [
+            ...parsed.users,
+            ...structuredClone(seedUsers)
+              .filter((su) => !parsed.users!.some((pu) => pu.id === su.id))
+              .map((u) => ({ ...u, active: u.active ?? true })),
+          ]
+        : structuredClone(seedUsers).map((u) => ({ ...u, active: u.active ?? true })),
       settings: parsed.settings ? { ...DEFAULT_SETTINGS, ...parsed.settings } : structuredClone(DEFAULT_SETTINGS),
       auditLog: parsed.auditLog?.length ? parsed.auditLog : buildSeedAuditLog(),
     };

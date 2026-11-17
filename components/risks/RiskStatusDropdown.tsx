@@ -149,7 +149,9 @@ export function RiskStatusDropdown({
         )}
       >
         {readOnly ? (
-          <Badge tone={RISK_STATUS_TONE[value]}>{t.riskStatus[value]}</Badge>
+          <Badge tone={RISK_STATUS_TONE[value]} className="w-[5.75rem] justify-center">
+            {t.riskStatus[value]}
+          </Badge>
         ) : (
           <>
             <span className="inline-flex items-center gap-1.5 truncate">

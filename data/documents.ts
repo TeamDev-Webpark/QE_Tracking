@@ -6,23 +6,25 @@ export const seedDocuments: IsoDocument[] = [
   // 1. ฝ่ายประกันคุณภาพ (quality)
   // ============================================================================
   {
-    id: "doc-qp-001", code: "QP-QA-001", title: "ขั้นตอนการควบคุมเอกสารและบันทึกคุณภาพ",
+    id: "doc-qp-001", code: "QP-QA-001", docType: "QP", clause: "7.5.3", nextReviewDate: "2027-09-15",
+    title: "ขั้นตอนการควบคุมเอกสารและบันทึกคุณภาพ",
     description: "กำหนดวิธีการจัดทำ ทบทวน อนุมัติ แจกจ่าย และยกเลิกเอกสารในระบบคุณภาพ",
     standardId: "iso9001", departmentId: "quality", ownerId: "u1",
     versions: [
-      { version: 1, changeNote: "จัดทำครั้งแรก", status: "superseded", createdAt: "2026-01-10T02:00:00.000Z", createdBy: "u1", publishedAt: "2026-01-15T02:00:00.000Z", publishedBy: "u1" },
-      { version: 2, changeNote: "ปรับปรุงขั้นตอนการอนุมัติเอกสารและเพิ่มแบบฟอร์มคำขอแก้ไข", status: "published", createdAt: "2026-09-01T02:00:00.000Z", createdBy: "u1", publishedAt: "2026-09-15T02:00:00.000Z", publishedBy: "u1" },
+      { version: 1, changeNote: "จัดทำครั้งแรก", status: "superseded", createdAt: "2026-01-10T02:00:00.000Z", createdBy: "u2", reviewedAt: "2026-01-12T04:00:00.000Z", reviewedBy: "u2", publishedAt: "2026-01-15T02:00:00.000Z", publishedBy: "u1" },
+      { version: 2, changeNote: "ปรับปรุงขั้นตอนการอนุมัติเอกสารและเพิ่มแบบฟอร์มคำขอแก้ไข", status: "published", createdAt: "2026-09-01T02:00:00.000Z", createdBy: "u2", reviewedAt: "2026-09-10T03:00:00.000Z", reviewedBy: "u2", reviewNote: "ตรวจสอบความสอดคล้องกับ ISO 9001 ข้อ 7.5.3 แล้ว", publishedAt: "2026-09-15T02:00:00.000Z", publishedBy: "u1" },
     ],
     downloadLimit: 3, userLimits: {}, downloadsUsed: { u2: 1 },
     downloadLog: [{ userId: "u2", version: 2, at: "2026-10-02T03:00:00.000Z" }],
   },
   {
-    id: "doc-qp-002", code: "QP-QA-002", title: "ขั้นตอนการตรวจติดตามภายใน (Internal Audit)",
+    id: "doc-qp-002", code: "QP-QA-002", docType: "QP", clause: "9.2", nextReviewDate: "2026-12-05",
+    title: "ขั้นตอนการตรวจติดตามภายใน (Internal Audit)",
     description: "กำหนดวิธีการวางแผน ดำเนินการ และรายงานผลการตรวจติดตามภายใน",
     standardId: "iso9001", departmentId: "quality", ownerId: "u2",
     versions: [
-      { version: 1, changeNote: "จัดทำครั้งแรก", status: "published", createdAt: "2026-02-01T02:00:00.000Z", createdBy: "u1", publishedAt: "2026-02-10T02:00:00.000Z", publishedBy: "u1" },
-      { version: 2, changeNote: "เพิ่มเกณฑ์คุณสมบัติผู้ตรวจติดตาม (อยู่ระหว่างทบทวน)", status: "draft", createdAt: "2026-10-25T02:00:00.000Z", createdBy: "u1" },
+      { version: 1, changeNote: "จัดทำครั้งแรก", status: "published", createdAt: "2026-02-01T02:00:00.000Z", createdBy: "u2", reviewedAt: "2026-02-05T02:00:00.000Z", reviewedBy: "u2", publishedAt: "2026-02-10T02:00:00.000Z", publishedBy: "u1" },
+      { version: 2, changeNote: "เพิ่มเกณฑ์คุณสมบัติผู้ตรวจติดตามและความเป็นอิสระของ Auditor (ข้อ 9.2.2)", status: "pending_review", createdAt: "2026-10-25T02:00:00.000Z", createdBy: "u2", reviewedAt: "2026-10-28T03:30:00.000Z", reviewedBy: "u5", reviewNote: "ทบทวนเกณฑ์ความเป็นอิสระของผู้ตรวจครบถ้วน รอ QMR อนุมัติประกาศใช้" },
     ],
     downloadLimit: 2, userLimits: {}, downloadsUsed: { u2: 2 },
     downloadLog: [
@@ -31,11 +33,12 @@ export const seedDocuments: IsoDocument[] = [
     ],
   },
   {
-    id: "doc-qp-qa-003", code: "QP-QA-003", title: "ขั้นตอนการจัดการสิ่งที่ไม่เป็นไปตามข้อกำหนดและการปฏิบัติการแก้ไข (NC/CAR)",
+    id: "doc-qp-qa-003", code: "QP-QA-003", docType: "QP", clause: "10.2", nextReviewDate: "2027-03-15",
+    title: "ขั้นตอนการจัดการสิ่งที่ไม่เป็นไปตามข้อกำหนดและการปฏิบัติการแก้ไข (NC/CAR)",
     description: "ขั้นตอนการแจ้งข้อบกพร่อง การวิเคราะห์รากเหง้าสาเหตุ และการตรวจยืนยันผลการแก้ไข",
     standardId: "iso9001", departmentId: "quality", ownerId: "u1",
     versions: [
-      { version: 1, changeNote: "ประกาศใช้มาตรฐานการจัดการ NC/CAR", status: "published", createdAt: "2026-03-10T02:00:00.000Z", createdBy: "u1", publishedAt: "2026-03-15T02:00:00.000Z", publishedBy: "u1" },
+      { version: 1, changeNote: "ประกาศใช้มาตรฐานการจัดการ NC/CAR", status: "published", createdAt: "2026-03-10T02:00:00.000Z", createdBy: "u1", reviewedAt: "2026-03-12T04:00:00.000Z", reviewedBy: "u2", reviewNote: "ครบถ้วนตามข้อกำหนด 10.2", publishedAt: "2026-03-15T02:00:00.000Z", publishedBy: "u1" },
     ],
     downloadLimit: 5, userLimits: {}, downloadsUsed: { u1: 1, u2: 1 },
     downloadLog: [
@@ -44,12 +47,13 @@ export const seedDocuments: IsoDocument[] = [
     ],
   },
   {
-    id: "doc-fm-qa-005", code: "FM-QA-005", title: "แบบฟอร์มบันทึกการสอบเทียบ (แบบเดิม)",
+    id: "doc-fm-qa-005", code: "FM-QA-005", docType: "FM", clause: "7.1.5",
+    title: "แบบฟอร์มบันทึกการสอบเทียบ (แบบเดิม)",
     description: "แบบฟอร์มเดิมที่ถูกแทนที่ด้วยระบบบันทึกผลการตรวจ",
     standardId: "iso9001", departmentId: "quality", ownerId: "u1",
     cancelled: { at: "2026-10-01T02:00:00.000Z", by: "u1", reason: "ยกเลิกการใช้งาน เปลี่ยนไปใช้ระบบบันทึกผลการตรวจ" },
     versions: [
-      { version: 1, changeNote: "จัดทำครั้งแรก", status: "published", createdAt: "2025-06-01T02:00:00.000Z", createdBy: "u1", publishedAt: "2025-06-05T02:00:00.000Z", publishedBy: "u1" },
+      { version: 1, changeNote: "จัดทำครั้งแรก", status: "published", createdAt: "2025-06-01T02:00:00.000Z", createdBy: "u1", reviewedAt: "2025-06-03T02:00:00.000Z", reviewedBy: "u2", publishedAt: "2025-06-05T02:00:00.000Z", publishedBy: "u1" },
     ],
     downloadLimit: 3, userLimits: {}, downloadsUsed: {}, downloadLog: [],
   },
@@ -58,33 +62,36 @@ export const seedDocuments: IsoDocument[] = [
   // 2. ฝ่ายผลิต (production)
   // ============================================================================
   {
-    id: "doc-qp-prd-001", code: "QP-PRD-001", title: "ขั้นตอนการวางแผนและควบคุมการผลิต",
+    id: "doc-qp-prd-001", code: "QP-PRD-001", docType: "QP", clause: "8.5.1", nextReviewDate: "2027-08-15",
+    title: "ขั้นตอนการวางแผนและควบคุมการผลิต",
     description: "กำหนดขั้นตอนการวางแผนการผลิต การควบคุมพารามิเตอร์เครื่องจักร และการติดตามผลผลิตประจำวัน",
     standardId: "iso9001", departmentId: "production", ownerId: "u3",
     versions: [
-      { version: 1, changeNote: "จัดทำครั้งแรก", status: "superseded", createdAt: "2026-01-20T02:00:00.000Z", createdBy: "u1", publishedAt: "2026-01-25T02:00:00.000Z", publishedBy: "u1" },
-      { version: 2, changeNote: "ปรับปรุงเกณฑ์การควบคุมอุณหภูมิพื้นที่ผลิตและตารางตรวจสอบประจำกะ", status: "published", createdAt: "2026-08-10T02:00:00.000Z", createdBy: "u1", publishedAt: "2026-08-15T02:00:00.000Z", publishedBy: "u1" },
+      { version: 1, changeNote: "จัดทำครั้งแรก", status: "superseded", createdAt: "2026-01-20T02:00:00.000Z", createdBy: "u3", reviewedAt: "2026-01-22T02:00:00.000Z", reviewedBy: "u2", publishedAt: "2026-01-25T02:00:00.000Z", publishedBy: "u1" },
+      { version: 2, changeNote: "ปรับปรุงเกณฑ์การควบคุมอุณหภูมิพื้นที่ผลิตและตารางตรวจสอบประจำกะ", status: "published", createdAt: "2026-08-10T02:00:00.000Z", createdBy: "u3", reviewedAt: "2026-08-12T04:00:00.000Z", reviewedBy: "u2", reviewNote: "สอดคล้องกับเกณฑ์อุณหภูมิ 20–25 °C", publishedAt: "2026-08-15T02:00:00.000Z", publishedBy: "u1" },
     ],
     downloadLimit: 5, userLimits: {}, downloadsUsed: { u3: 1 },
     downloadLog: [{ userId: "u3", version: 2, at: "2026-10-12T04:00:00.000Z" }],
   },
   {
-    id: "doc-wi-prd-010", code: "WI-PRD-010", title: "วิธีการปฏิบัติงานสายการผลิต",
+    id: "doc-wi-prd-010", code: "WI-PRD-010", docType: "WI", clause: "8.5.1", nextReviewDate: "2026-11-30",
+    title: "วิธีการปฏิบัติงานสายการผลิต",
     description: "ขั้นตอนการตั้งค่าเครื่องจักรและตรวจสอบชิ้นงานในสายการผลิต",
     standardId: "iso9001", departmentId: "production", ownerId: "u3",
     versions: [
-      { version: 1, changeNote: "ประกาศใช้มาตรฐานการเดินสายการผลิตหลัก", status: "published", createdAt: "2026-05-01T02:00:00.000Z", createdBy: "u1", publishedAt: "2026-05-05T02:00:00.000Z", publishedBy: "u1" },
-      { version: 2, changeNote: "ปรับปรุงความเร็วสายพาน Line A และจุดตรวจ First Piece (รออนุมัติประกาศใช้)", status: "draft", createdAt: "2026-11-01T02:00:00.000Z", createdBy: "u1" },
+      { version: 1, changeNote: "ประกาศใช้มาตรฐานการเดินสายการผลิตหลัก", status: "published", createdAt: "2026-05-01T02:00:00.000Z", createdBy: "u3", reviewedAt: "2026-05-03T02:00:00.000Z", reviewedBy: "u2", publishedAt: "2026-05-05T02:00:00.000Z", publishedBy: "u1" },
+      { version: 2, changeNote: "ปรับปรุงความเร็วสายพาน Line A และจุดตรวจ First Piece (อยู่ระหว่างรอผู้ทบทวนตรวจสอบ)", status: "draft", createdAt: "2026-11-01T02:00:00.000Z", createdBy: "u3" },
     ],
     downloadLimit: 3, userLimits: {}, downloadsUsed: { u3: 1 },
     downloadLog: [{ userId: "u3", version: 1, at: "2026-09-18T03:30:00.000Z" }],
   },
   {
-    id: "doc-wi-prd-011", code: "WI-PRD-011", title: "มาตรฐานการตรวจสอบชิ้นงานแรก (First Piece Inspection)",
+    id: "doc-wi-prd-011", code: "WI-PRD-011", docType: "WI", clause: "8.5.1", nextReviewDate: "2026-11-01",
+    title: "มาตรฐานการตรวจสอบชิ้นงานแรก (First Piece Inspection)",
     description: "วิธีตรวจสอบขนาด น้ำหนัก และความสมบูรณ์ของชิ้นงานตัวอย่างแรกก่อนเริ่มเดินสายการผลิตแต่ละล็อต",
     standardId: "iso9001", departmentId: "production", ownerId: "u3",
     versions: [
-      { version: 1, changeNote: "จัดทำครั้งแรก", status: "published", createdAt: "2026-06-10T02:00:00.000Z", createdBy: "u1", publishedAt: "2026-06-15T02:00:00.000Z", publishedBy: "u1" },
+      { version: 1, changeNote: "จัดทำครั้งแรก", status: "published", createdAt: "2026-06-10T02:00:00.000Z", createdBy: "u3", reviewedAt: "2026-06-12T02:00:00.000Z", reviewedBy: "u2", publishedAt: "2026-06-15T02:00:00.000Z", publishedBy: "u1" },
     ],
     downloadLimit: 3, userLimits: {}, downloadsUsed: { u3: 2 },
     downloadLog: [

@@ -32,7 +32,7 @@ export function AuditListView({
 }: {
   audits: AuditView[];
   standards: { id: string; label: string }[];
-  auditors: { id: string; name: string; role: string }[];
+  auditors: { id: string; name: string; role: string; departmentId: string }[];
   nextCode: string;
 }) {
   const { lang } = useI18n();
@@ -79,13 +79,35 @@ export function AuditListView({
           <p className="mt-0.5 text-xs text-text-muted">
             แผนก: {departmentName(a.departmentId, lang)} · ผู้ตรวจ: {a.leadAuditorName}
           </p>
+          {a.scope && (
+            <p className="mt-1 text-xs text-text">
+              <strong className="font-semibold text-text-muted">เรื่องที่ตรวจ:</strong> {a.scope}
+            </p>
+          )}
         </div>
       ),
     },
     {
       key: "date",
-      header: "วันที่กำหนดตรวจ",
-      render: (a) => <span className="text-xs text-text-muted">{formatDate(a.scheduledDate, lang)}</span>,
+      header: canManage ? "วันที่กำหนดตรวจ (เฉพาะผู้ตรวจ)" : "กำหนดการเข้าตรวจ",
+      render: (a) => (
+        <div className="whitespace-nowrap">
+          {canManage ? (
+            <>
+              <span className="text-xs font-semibold text-text">{formatDate(a.scheduledDate, lang)}</span>
+              {(a.status === "planned" || a.status === "in_progress") && (
+                <p className="text-[11px] text-amber-800">ปกปิดวัน-เวลากับพนักงาน</p>
+              )}
+            </>
+          ) : a.status === "completed" && a.completedDate ? (
+            <span className="text-xs text-text-muted">ตรวจเมื่อ {formatDate(a.completedDate, lang)}</span>
+          ) : (
+            <span className="inline-block rounded bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-900">
+              ไม่ระบุวัน-เวลา (สุ่มตรวจ)
+            </span>
+          )}
+        </div>
+      ),
     },
     {
       key: "status",
@@ -95,15 +117,18 @@ export function AuditListView({
     {
       key: "findings",
       header: "ผลตรวจ (ผ่าน / ข้อสังเกต / NC)",
-      render: (a) => (
-        <div className="flex flex-wrap items-center gap-1 text-xs">
-          <Badge tone="success">ผ่าน {a.summaryFindings.conforming}</Badge>
-          <Badge tone="warning">ข้อสังเกต {a.summaryFindings.observation}</Badge>
-          <Badge tone={a.summaryFindings.nonconforming > 0 ? "danger" : "neutral"}>
-            NC {a.summaryFindings.nonconforming}
-          </Badge>
-        </div>
-      ),
+      render: (a) =>
+        !canManage && a.status !== "completed" ? (
+          <span className="text-xs text-text-muted">แสดงผลหลังตรวจเสร็จสิ้น</span>
+        ) : (
+          <div className="flex flex-wrap items-center gap-1 text-xs">
+            <Badge tone="success">ผ่าน {a.summaryFindings.conforming}</Badge>
+            <Badge tone="warning">ข้อสังเกต {a.summaryFindings.observation}</Badge>
+            <Badge tone={a.summaryFindings.nonconforming > 0 ? "danger" : "neutral"}>
+              NC {a.summaryFindings.nonconforming}
+            </Badge>
+          </div>
+        ),
     },
     {
       key: "actions",
@@ -111,21 +136,23 @@ export function AuditListView({
       className: "w-px text-right",
       render: (a) => (
         <div className="flex items-center justify-end gap-1">
-          <Link
-            href={`/audits/${a.id}`}
-            className="rounded-control px-2.5 py-1 text-xs font-semibold text-primary hover:bg-page"
-          >
-            เข้าตรวจ →
-          </Link>
           {canManage && (
-            <button
-              type="button"
-              onClick={() => setModalAudit(a)}
-              className="rounded-control p-1.5 text-text-muted hover:bg-page hover:text-primary cursor-pointer"
-              title="แก้ไขแผนตรวจ"
-            >
-              <EditIcon className="h-4 w-4" />
-            </button>
+            <>
+              <Link
+                href={`/audits/${a.id}`}
+                className="rounded-control px-2.5 py-1 text-xs font-semibold text-primary hover:bg-page"
+              >
+                เข้าตรวจ →
+              </Link>
+              <button
+                type="button"
+                onClick={() => setModalAudit(a)}
+                className="rounded-control p-1.5 text-text-muted hover:bg-page hover:text-primary cursor-pointer"
+                title="แก้ไขแผนตรวจ"
+              >
+                <EditIcon className="h-4 w-4" />
+              </button>
+            </>
           )}
         </div>
       ),
@@ -136,7 +163,11 @@ export function AuditListView({
     <div className="space-y-6">
       <PageHeader
         title="ตรวจติดตามภายใน (Internal Audit)"
-        description="วางแผนการตรวจประเมิน บันทึกผลการตรวจ และส่งต่อข้อบกพร่องเป็นใบ NC (ISO 9001 ข้อ 9.2)"
+        description={
+          canManage
+            ? "วางแผนการตรวจประเมิน บันทึกผลการตรวจ และส่งต่อข้อบกพร่องเป็นใบ NC (ISO 9001 ข้อ 9.2)"
+            : `แจ้งหัวข้อและขอบเขตการตรวจติดตามภายในของ ${departmentName(user.departmentId, lang)} (ไม่ระบุวันและเวลาเข้าตรวจล่วงหน้า)`
+        }
         actions={
           canManage ? (
             <Button onClick={() => setModalAudit(null)}>
@@ -145,6 +176,17 @@ export function AuditListView({
           ) : undefined
         }
       />
+
+      {!canManage && (plannedCount > 0 || inProgressCount > 0) && (
+        <div className="rounded-card border border-amber-300 bg-amber-50 p-4 text-xs text-amber-950">
+          <p className="font-bold text-sm">
+            แจ้งเตือนหัวข้อที่จะเข้าตรวจติดตามภายใน ({departmentName(user.departmentId, lang)})
+          </p>
+          <p className="mt-0.5 text-amber-900">
+            แผนกของคุณมีรายการเตรียมรับการตรวจติดตามภายใน <strong>{plannedCount + inProgressCount} รายการ</strong> โดยแจ้งให้ทราบเฉพาะ<strong>หัวข้อและเรื่องที่จะเข้าตรวจ (ไม่ระบุวันและเวลาเข้าตรวจ)</strong> เพื่อให้การตรวจประเมินสะท้อนการปฏิบัติงานจริงหน้างาน
+          </p>
+        </div>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatTile

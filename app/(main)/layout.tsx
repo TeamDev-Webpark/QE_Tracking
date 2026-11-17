@@ -5,6 +5,7 @@ import { getDictionary } from "@/i18n/dictionaries";
 import { AppShell } from "@/components/layout/AppShell";
 import { I18nProvider } from "@/components/providers/I18nProvider";
 import { SessionProvider } from "@/components/providers/SessionProvider";
+import { getUpcomingAuditNotices } from "@/lib/audits/queries";
 import { getLang, getSessionUser } from "@/lib/auth/session";
 
 export default function MainLayout({ children }: LayoutProps<"/">) {
@@ -19,12 +20,13 @@ export default function MainLayout({ children }: LayoutProps<"/">) {
 async function SessionShell({ children }: { children: React.ReactNode }) {
   const [user, lang] = await Promise.all([getSessionUser(), getLang()]);
   if (!user) redirect("/login"); // backup for proxy.ts
+  const upcomingAudits = await getUpcomingAuditNotices(user);
 
   return (
     <I18nProvider lang={lang}>
       <SessionProvider user={user}>
         <ToastProvider dismissLabel={getDictionary().common.dismiss}>
-          <AppShell>{children}</AppShell>
+          <AppShell upcomingAudits={upcomingAudits}>{children}</AppShell>
         </ToastProvider>
       </SessionProvider>
     </I18nProvider>

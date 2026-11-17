@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useDeferredValue, useMemo, useState } from "react";
-import { Badge, Button, Card, Input, PageHeader, Select } from "@/components/ui";
+import { Badge, Button, Card, PageHeader } from "@/components/ui";
 import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, SearchIcon } from "@/components/icons";
 import { useI18n } from "@/components/providers/I18nProvider";
 import { getUserById, getUsers } from "@/data";
@@ -219,8 +219,8 @@ export function AuditTrailView({ entries }: { entries: AuditEntry[] }) {
         }
       />
 
-      {/* Quick category filter chips for fast navigation on large datasets */}
-      <div className="mb-4 flex flex-wrap items-center gap-2">
+      {/* Quick category filter chips */}
+      <div className="mb-4 flex flex-wrap items-center gap-1.5 rounded-card border border-border bg-surface p-2 shadow-2xs">
         <button
           type="button"
           onClick={() => {
@@ -228,16 +228,16 @@ export function AuditTrailView({ entries }: { entries: AuditEntry[] }) {
             setPage(1);
           }}
           className={cn(
-            "inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors cursor-pointer",
+            "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer",
             f.type === ""
-              ? "border-primary bg-primary text-white shadow-xs"
-              : "border-border bg-surface text-text hover:border-primary/40 hover:bg-primary-soft",
+              ? "bg-primary text-white shadow-2xs"
+              : "text-text-muted hover:bg-page hover:text-text",
           )}
         >
           <span>{t.audit.allTypes}</span>
           <span
             className={cn(
-              "rounded-full px-1.5 py-0.5 text-[11px] font-bold tabular-nums",
+              "rounded-full px-1.5 py-0.2 text-[11px] font-bold tabular-nums",
               f.type === "" ? "bg-white/20 text-white" : "bg-page text-text-muted",
             )}
           >
@@ -247,6 +247,7 @@ export function AuditTrailView({ entries }: { entries: AuditEntry[] }) {
         {(Object.keys(t.auditEntity) as AuditEntityType[]).map((k) => {
           const active = f.type === k;
           const cnt = entityCounts[k] ?? 0;
+          if (cnt === 0 && !active) return null;
           return (
             <button
               key={k}
@@ -256,16 +257,16 @@ export function AuditTrailView({ entries }: { entries: AuditEntry[] }) {
                 setPage(1);
               }}
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors cursor-pointer",
+                "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer",
                 active
-                  ? "border-primary bg-primary text-white shadow-xs"
-                  : "border-border bg-surface text-text hover:border-primary/40 hover:bg-primary-soft",
+                  ? "bg-primary text-white shadow-2xs"
+                  : "text-text-muted hover:bg-page hover:text-text",
               )}
             >
               <span>{t.auditEntity[k]}</span>
               <span
                 className={cn(
-                  "rounded-full px-1.5 py-0.5 text-[11px] font-bold tabular-nums",
+                  "rounded-full px-1.5 py-0.2 text-[11px] font-bold tabular-nums",
                   active ? "bg-white/20 text-white" : "bg-page text-text-muted",
                 )}
               >
@@ -278,40 +279,98 @@ export function AuditTrailView({ entries }: { entries: AuditEntry[] }) {
 
       <Card>
         {/* Filter controls */}
-        <div className="mb-4 grid gap-3 md:grid-cols-2 xl:grid-cols-6">
-          <label className="relative xl:col-span-2">
+        <div className="mb-4 flex flex-col gap-2.5 border-b border-border/60 pb-3.5 lg:flex-row lg:flex-wrap lg:items-center">
+          <label className="relative flex-1 min-w-0 sm:min-w-[240px]">
             <span className="sr-only">{t.common.search}</span>
-            <SearchIcon className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-text-muted" width={18} height={18} />
-            <Input type="search" value={f.q} onChange={set("q")} placeholder={t.audit.searchPlaceholder} className="pl-11" />
+            <SearchIcon
+              className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-text-muted"
+              width={15}
+              height={15}
+            />
+            <input
+              type="search"
+              value={f.q}
+              onChange={set("q")}
+              placeholder={t.audit.searchPlaceholder}
+              className="h-9 w-full rounded-lg border border-border/80 bg-surface pl-9 pr-3 text-xs text-text placeholder:text-text-muted focus:border-primary focus:outline-hidden transition-colors"
+            />
           </label>
-          <Select aria-label={t.audit.entity} value={f.type} onChange={set("type")}>
+
+          <select
+            aria-label={t.audit.entity}
+            value={f.type}
+            onChange={set("type")}
+            className="h-9 rounded-lg border border-border/80 bg-surface px-3 text-xs font-semibold text-text hover:border-primary/40 focus:border-primary focus:outline-hidden cursor-pointer"
+          >
             <option value="">{t.audit.allTypes}</option>
             {(Object.keys(t.auditEntity) as AuditEntityType[]).map((k) => (
               <option key={k} value={k}>
-                {t.auditEntity[k]}
+                {t.auditEntity[k]} ({(entityCounts[k] ?? 0).toLocaleString()})
               </option>
             ))}
-          </Select>
-          <Select aria-label={t.audit.action} value={f.action} onChange={set("action")}>
+          </select>
+
+          <select
+            aria-label={t.audit.action}
+            value={f.action}
+            onChange={set("action")}
+            className="h-9 rounded-lg border border-border/80 bg-surface px-3 text-xs font-semibold text-text hover:border-primary/40 focus:border-primary focus:outline-hidden cursor-pointer"
+          >
             <option value="">{t.audit.allActions}</option>
             {(Object.keys(t.auditAction) as AuditAction[]).map((k) => (
               <option key={k} value={k}>
                 {t.auditAction[k]}
               </option>
             ))}
-          </Select>
-          <Select aria-label={t.audit.user} value={f.userId} onChange={set("userId")}>
+          </select>
+
+          <select
+            aria-label={t.audit.user}
+            value={f.userId}
+            onChange={set("userId")}
+            className="h-9 rounded-lg border border-border/80 bg-surface px-3 text-xs font-semibold text-text hover:border-primary/40 focus:border-primary focus:outline-hidden cursor-pointer"
+          >
             <option value="">{t.audit.allUsers}</option>
             {getUsers().map((u) => (
               <option key={u.id} value={u.id}>
                 {displayName(u, lang)}
               </option>
             ))}
-          </Select>
-          <div className="grid grid-cols-2 gap-2">
-            <Input type="date" aria-label={t.audit.from} title={t.audit.from} value={f.from} onChange={set("from")} />
-            <Input type="date" aria-label={t.audit.to} title={t.audit.to} value={f.to} onChange={set("to")} />
+          </select>
+
+          <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-border/80 bg-page/60 px-2.5 py-1 text-xs">
+            <span className="font-semibold text-text-muted">วันที่:</span>
+            <input
+              type="date"
+              aria-label={t.audit.from}
+              title={t.audit.from}
+              value={f.from}
+              onChange={set("from")}
+              className="h-7 min-w-[132px] rounded border border-border/70 bg-surface px-2 text-xs text-text focus:border-primary focus:outline-hidden"
+            />
+            <span className="text-text-muted">–</span>
+            <input
+              type="date"
+              aria-label={t.audit.to}
+              title={t.audit.to}
+              value={f.to}
+              onChange={set("to")}
+              className="h-7 min-w-[132px] rounded border border-border/70 bg-surface px-2 text-xs text-text focus:border-primary focus:outline-hidden"
+            />
           </div>
+
+          {filtering && (
+            <button
+              type="button"
+              onClick={() => {
+                setF(empty);
+                setPage(1);
+              }}
+              className="rounded-lg border border-border/80 bg-page px-3 py-1.5 text-xs font-semibold text-danger hover:bg-danger-soft transition-colors cursor-pointer shrink-0"
+            >
+              ✕ {t.requirements.clearFilters}
+            </button>
+          )}
         </div>
 
         {/* Toolbar: counts, sort order, expand/collapse, page size */}
