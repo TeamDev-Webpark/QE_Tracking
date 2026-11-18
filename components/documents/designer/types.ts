@@ -41,13 +41,21 @@ export interface FormTemplate {
   updatedBy: string;
 }
 
+export type FormFieldValue =
+  | string
+  | number
+  | boolean
+  | Array<Record<string, string>>
+  | null
+  | undefined;
+
 export interface FormSubmission {
   id: string;
   templateId: string;
   documentId: string;
   documentCode: string;
   title: string;
-  values: Record<string, any>;
+  values: Record<string, FormFieldValue>;
   status: "draft" | "submitted" | "approved";
   filledBy: {
     id: string;

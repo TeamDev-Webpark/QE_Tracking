@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { Badge, Button, Card, PageHeader, useToast } from "@/components/ui";
 import { StatTile } from "@/components/dashboard/StatTile";
 import { useI18n } from "@/components/providers/I18nProvider";
@@ -49,11 +49,13 @@ export function ElearningView({
   const canManage = user.role === "admin" || user.role === "qe";
   const toast = useToast();
 
+  const [prevCourses, setPrevCourses] = useState(courses);
   const [courseList, setCourseList] = useState(courses);
 
-  useEffect(() => {
+  if (courses !== prevCourses) {
+    setPrevCourses(courses);
     setCourseList(courses);
-  }, [courses]);
+  }
 
   const [activeCourse, setActiveCourse] = useState<ElearningCourseItem | null>(null);
   const [editingCourse, setEditingCourse] = useState<ElearningCourseItem | null>(null);

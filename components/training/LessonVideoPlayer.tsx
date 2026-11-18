@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { LessonChapter, VideoCheckpoint } from "@/data/elearningCurriculum";
 import { cn } from "@/lib/cn";
 import { parseVideoSource } from "./videoUtils";
@@ -135,6 +135,7 @@ export function LessonVideoPlayer({
   const [videoDuration, setVideoDuration] = useState(simulatedTotalSec);
   const [videoLoadError, setVideoLoadError] = useState(false);
   const [muted, setMuted] = useState(false);
+  const [volume, setVolume] = useState<number>(1);
   const [quality, setQuality] = useState<VideoQualityOption>("720p");
   const [showQualityMenu, setShowQualityMenu] = useState(false);
   const [qualityToast, setQualityToast] = useState<string | null>(null);
@@ -190,9 +191,11 @@ export function LessonVideoPlayer({
     return () => window.removeEventListener("click", close);
   }, [showQualityMenu]);
 
-  useEffect(() => {
+  const [prevVideoUrl, setPrevVideoUrl] = useState(chapter.videoUrl);
+  if (chapter.videoUrl !== prevVideoUrl) {
+    setPrevVideoUrl(chapter.videoUrl);
     setVideoLoadError(false);
-  }, [chapter.videoUrl]);
+  }
   const [showCaptions, setShowCaptions] = useState(true);
   const [showTranscript, setShowTranscript] = useState(false);
 
@@ -209,11 +212,10 @@ export function LessonVideoPlayer({
   const correctCheckpointsCount = useMemo(() => {
     return Object.values(checkpointResults).filter((r) => r.isCorrect).length;
   }, [checkpointResults]);
-  const isChapterQuizPassed = totalCheckpointsCount === 0 || correctCheckpointsCount === totalCheckpointsCount;
 
   const effectiveDuration = isDirectVideo ? Math.max(1, videoDuration) : simulatedTotalSec;
 
-  const handleVideoCompleted = () => {
+  const handleVideoCompleted = useCallback(() => {
     setPlaying(false);
     const passed = totalCheckpointsCount === 0 || correctCheckpointsCount === totalCheckpointsCount;
     onVideoCompleted?.({
@@ -222,7 +224,7 @@ export function LessonVideoPlayer({
       totalCount: totalCheckpointsCount,
       checkpointResults,
     });
-  };
+  }, [totalCheckpointsCount, correctCheckpointsCount, onVideoCompleted, checkpointResults]);
 
   // Trigger checkpoint when currentSec reaches a checkpoint's timeSec
   const checkAndTriggerCheckpoint = (nextSec: number) => {
@@ -265,7 +267,7 @@ export function LessonVideoPlayer({
       });
     }, 500);
     return () => clearInterval(interval);
-  }, [playing, isDirectVideo, activeCheckpoint, checkpoints, answeredCheckpointIds, simulatedTotalSec, correctCheckpointsCount, totalCheckpointsCount, checkpointResults]);
+  }, [playing, isDirectVideo, activeCheckpoint, checkpoints, answeredCheckpointIds, simulatedTotalSec, handleVideoCompleted]);
 
   const handleSaveAndResume = () => {
     if (!activeCheckpoint || selectedChoice === null) return;
@@ -333,12 +335,64 @@ export function LessonVideoPlayer({
     }
   };
 
-  const toggleMute = () => {
+  const handleVolumeChange = (newVol: number) => {
+    const clamped = Math.max(0, Math.min(1, newVol));
+    setVolume(clamped);
     if (videoRef.current) {
-      videoRef.current.muted = !muted;
-      setMuted(!muted);
+      videoRef.current.volume = clamped;
+      videoRef.current.muted = clamped === 0;
+    }
+    if (iframeRef.current?.contentWindow) {
+      try {
+        iframeRef.current.contentWindow.postMessage(
+          JSON.stringify({ event: "command", func: "setVolume", args: [Math.round(clamped * 100)] }),
+          "*",
+        );
+      } catch {}
+    }
+    if (clamped === 0) {
+      setMuted(true);
+    } else if (muted) {
+      setMuted(false);
+      if (videoRef.current) videoRef.current.muted = false;
+      if (iframeRef.current?.contentWindow) {
+        try {
+          iframeRef.current.contentWindow.postMessage(JSON.stringify({ event: "command", func: "unMute" }), "*");
+        } catch {}
+      }
+    }
+  };
+
+  const volumeDown = () => {
+    const next = Math.max(0, Math.round((volume - 0.1) * 10) / 10);
+    handleVolumeChange(next);
+  };
+
+  const volumeUp = () => {
+    const next = Math.min(1, Math.round((volume + 0.1) * 10) / 10);
+    handleVolumeChange(next);
+  };
+
+  const toggleMute = () => {
+    const nextMuted = !muted;
+    setMuted(nextMuted);
+    if (videoRef.current) {
+      videoRef.current.muted = nextMuted;
+      if (!nextMuted && volume === 0) {
+        handleVolumeChange(0.5);
+      }
     } else {
-      setMuted(!muted);
+      if (!nextMuted && volume === 0) {
+        setVolume(0.5);
+      }
+    }
+    if (iframeRef.current?.contentWindow) {
+      try {
+        iframeRef.current.contentWindow.postMessage(
+          JSON.stringify({ event: "command", func: nextMuted ? "mute" : "unMute" }),
+          "*",
+        );
+      } catch {}
     }
   };
 
@@ -624,9 +678,9 @@ export function LessonVideoPlayer({
           })}
         </div>
 
-        {/* Player Controls — Single Clean Row without duplicate line below ("เอาเส้นด้านล่างออก") */}
-        <div className="bg-white px-4 py-2.5 flex items-center justify-between gap-3 text-xs shadow-2xs">
-          <div className="flex items-center gap-2">
+        {/* Player Controls — Single Clean Row with Play/Pause, Volume controls, Quality, and Fullscreen */}
+        <div className="bg-white px-3 sm:px-4 py-2.5 flex flex-wrap items-center justify-between gap-2.5 text-xs shadow-2xs">
+          <div className="flex items-center gap-2 flex-wrap">
             {!isEmbedVideo && (
               <button
                 type="button"
@@ -637,16 +691,57 @@ export function LessonVideoPlayer({
               </button>
             )}
 
-            {isDirectVideo && (
+            {/* Volume Control Group (ปุ่มปิด/เปิดเสียง, ปุ่มลดเสียง -, สไลเดอร์, ปุ่มเพิ่มเสียง +, ตัวเลข %) */}
+            <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50/90 px-2 py-1 shadow-2xs">
+              {/* Mute/Unmute Button */}
               <button
                 type="button"
                 onClick={toggleMute}
-                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-colors cursor-pointer shadow-2xs"
-                title={muted ? "เปิดเสียง" : "ปิดเสียง"}
+                className="inline-flex items-center justify-center text-slate-700 hover:text-sky-600 transition-colors cursor-pointer text-sm p-0.5"
+                title={muted ? "เปิดเสียง (Unmute)" : "ปิดเสียง (Mute)"}
               >
-                <span>{muted ? "🔇 ปิดเสียง" : "🔊 เปิดเสียง"}</span>
+                <span>{muted || volume === 0 ? "🔇" : volume < 0.5 ? "🔉" : "🔊"}</span>
               </button>
-            )}
+
+              {/* Volume Down Button (-) */}
+              <button
+                type="button"
+                onClick={volumeDown}
+                disabled={muted || volume === 0}
+                className="inline-flex h-5 w-5 items-center justify-center rounded bg-white border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-100 hover:text-sky-600 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors shadow-2xs"
+                title="ลดเสียง (-10%)"
+              >
+                −
+              </button>
+
+              {/* Volume Slider */}
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={muted ? 0 : volume}
+                onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
+                className="w-14 sm:w-20 h-1.5 accent-sky-600 bg-slate-200 rounded-lg cursor-pointer"
+                title={`ระดับเสียง: ${Math.round((muted ? 0 : volume) * 100)}%`}
+              />
+
+              {/* Volume Up Button (+) */}
+              <button
+                type="button"
+                onClick={volumeUp}
+                disabled={!muted && volume === 1}
+                className="inline-flex h-5 w-5 items-center justify-center rounded bg-white border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-100 hover:text-sky-600 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors shadow-2xs"
+                title="เพิ่มเสียง (+10%)"
+              >
+                +
+              </button>
+
+              {/* Volume Percentage Display */}
+              <span className="font-mono text-[10px] font-bold text-slate-500 w-8 text-center select-none tabular-nums">
+                {Math.round((muted ? 0 : volume) * 100)}%
+              </span>
+            </div>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">

@@ -12,7 +12,10 @@ const ALLOWED_EXTS = [".mp4", ".webm", ".ogg", ".mov", ".m4v"];
 
 export async function POST(req: Request) {
   const user = await getSessionUser();
-  if (!user || (user.role !== "admin" && user.role !== "qe")) {
+  if (!user) {
+    return NextResponse.json({ ok: false, error: "กรุณาเข้าสู่ระบบก่อนดำเนินการ" }, { status: 401 });
+  }
+  if (user.role !== "admin" && user.role !== "qe") {
     return NextResponse.json({ ok: false, error: "ไม่มีสิทธิ์อัปโหลดวิดีโอ (ต้องเป็น Admin หรือ QE)" }, { status: 403 });
   }
 

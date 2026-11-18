@@ -10,6 +10,10 @@ import {
 } from "./designerStorage";
 import type { FormField, FormTemplate } from "./types";
 
+function generateFieldId(): string {
+  return `f-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+}
+
 export function DocumentFormDesigner({
   documentId,
   documentCode,
@@ -48,7 +52,7 @@ export function DocumentFormDesigner({
 
     const newField: FormField = {
       ...paletteDef.defaultField,
-      id: `f-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      id: generateFieldId(),
     };
 
     setTemplate((prev) => ({
@@ -115,11 +119,11 @@ export function DocumentFormDesigner({
   };
 
   // Duplicate field
-  const handleDuplicateField = (field: FormField, e: React.MouseEvent) => {
+  const handleDuplicateField = (e: React.MouseEvent, field: FormField) => {
     e.stopPropagation();
     const dup: FormField = {
       ...field,
-      id: `f-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      id: generateFieldId(),
       label: `${field.label} (สำเนา)`,
     };
     const idx = template.fields.findIndex((f) => f.id === field.id);
@@ -132,8 +136,12 @@ export function DocumentFormDesigner({
 
   // Save template
   const handleSave = () => {
-    template.updatedBy = sessionUser.name || "Admin";
-    saveFormTemplate(template);
+    const updated: FormTemplate = {
+      ...template,
+      updatedBy: sessionUser.name || "Admin",
+    };
+    setTemplate(updated);
+    saveFormTemplate(updated);
     toast.success("บันทึกแบบฟอร์มเรียบร้อยแล้ว");
   };
 
@@ -396,7 +404,7 @@ export function DocumentFormDesigner({
                                     ⠿
                                   </span>
                                   <button
-                                    onClick={(e) => handleDuplicateField(field, e)}
+                                    onClick={(e) => handleDuplicateField(e, field)}
                                     className="text-slate-400 hover:text-sky-600 px-1 text-xs transition"
                                     title="ทำสำเนาฟิลด์"
                                   >

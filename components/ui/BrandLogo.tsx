@@ -1,11 +1,14 @@
+import Image from "next/image";
 import { cn } from "@/lib/cn";
 
 export function BrandMark({ className = "h-9 w-9" }: { className?: string }) {
   return (
     <span className={cn("relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-xl", className)}>
-      <img
+      <Image
         src="/logo-icon.png"
         alt="Webpark Logo"
+        width={36}
+        height={36}
         className="h-full w-full object-contain"
       />
     </span>

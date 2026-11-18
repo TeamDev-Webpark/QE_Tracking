@@ -9,7 +9,7 @@ import {
   saveSubmission,
 } from "./designerStorage";
 import { generateFormSubmissionPdf } from "./generateFormPdf";
-import type { FormField, FormSubmission, FormTemplate } from "./types";
+import type { FormField, FormFieldValue, FormSubmission, FormTemplate } from "./types";
 
 export function DocumentFormFiller({
   documentId,
@@ -31,7 +31,6 @@ export function DocumentFormFiller({
   const template: FormTemplate = loadFormTemplate(documentId, documentCode, documentTitle);
   const existingSubmissions = loadSubmissions(documentId);
 
-  const [activeSubmissionId, setActiveSubmissionId] = useState<string>("new");
   const [isExporting, setIsExporting] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
 
@@ -64,7 +63,6 @@ export function DocumentFormFiller({
 
   // Switch between submissions or create new
   const handleSelectSubmission = (id: string) => {
-    setActiveSubmissionId(id);
     if (id === "new") {
       setCurrentSubmission(createNewSubmission());
     } else {
@@ -74,7 +72,7 @@ export function DocumentFormFiller({
   };
 
   // Update a field value
-  const handleValueChange = (fieldId: string, val: any) => {
+  const handleValueChange = (fieldId: string, val: FormFieldValue) => {
     setCurrentSubmission((prev) => ({
       ...prev,
       values: {
@@ -86,7 +84,8 @@ export function DocumentFormFiller({
 
   // Add row to table field
   const handleAddTableRow = (field: FormField) => {
-    const cur = currentSubmission.values[field.id] || [];
+    const raw = currentSubmission.values[field.id];
+    const cur = (Array.isArray(raw) ? raw : []) as Record<string, string>[];
     const cols = field.columns || ["col_0", "col_1"];
     const emptyRow: Record<string, string> = {};
     cols.forEach((_, cIdx) => {
@@ -110,7 +109,6 @@ export function DocumentFormFiller({
 
     saveSubmission(toSave);
     setCurrentSubmission(toSave);
-    setActiveSubmissionId(toSave.id);
     toast.success(
       status === "submitted"
         ? "ส่งบันทึกคุณภาพเรียบร้อยแล้ว (Submitted)"
@@ -262,7 +260,7 @@ export function DocumentFormFiller({
                     }`}
                   >
                     <div className="flex items-center justify-between text-xs font-bold text-slate-800">
-                      <span className="truncate">{sub.values["f-lot-1"] || "บันทึกไม่มี Lot"}</span>
+                      <span className="truncate">{(sub.values["f-lot-1"] as string) || "บันทึกไม่มี Lot"}</span>
                       <span
                         className={`text-[9px] px-1.5 py-0.2 rounded-full shrink-0 ml-1 font-semibold ${
                           sub.status === "submitted"
@@ -372,6 +370,7 @@ export function DocumentFormFiller({
                       : "w-full px-1.5 sm:px-2 mb-3.5";
 
                   const val = currentSubmission.values[field.id];
+                  const strVal = typeof val === "string" || typeof val === "number" ? val : "";
 
                   if (field.type === "section") {
                     return (
@@ -408,7 +407,7 @@ export function DocumentFormFiller({
                       {field.type === "text" && (
                         <input
                           type="text"
-                          value={val || ""}
+                          value={strVal}
                           onChange={(e) => handleValueChange(field.id, e.target.value)}
                           placeholder={field.placeholder || "กรอกข้อความ..."}
                           className="w-full rounded-lg border border-sky-200 bg-white px-3 py-1.5 text-xs text-slate-900 focus:border-sky-500 focus:ring-1 focus:ring-sky-200 focus:outline-hidden transition"
@@ -421,7 +420,7 @@ export function DocumentFormFiller({
                           <input
                             type="number"
                             step="any"
-                            value={val || ""}
+                            value={strVal}
                             onChange={(e) => handleValueChange(field.id, e.target.value)}
                             placeholder={field.placeholder || "0"}
                             className="w-full rounded-lg border border-sky-200 bg-white px-3 py-1.5 text-xs text-slate-900 focus:border-sky-500 focus:ring-1 focus:ring-sky-200 focus:outline-hidden pr-12 transition"
@@ -438,7 +437,7 @@ export function DocumentFormFiller({
                       {field.type === "textarea" && (
                         <textarea
                           rows={3}
-                          value={val || ""}
+                          value={strVal}
                           onChange={(e) => handleValueChange(field.id, e.target.value)}
                           placeholder={field.placeholder || "กรอกรายละเอียด..."}
                           className="w-full rounded-lg border border-sky-200 bg-white px-3 py-1.5 text-xs text-slate-900 focus:border-sky-500 focus:ring-1 focus:ring-sky-200 focus:outline-hidden resize-y transition"
@@ -449,7 +448,7 @@ export function DocumentFormFiller({
                       {field.type === "date" && (
                         <input
                           type="date"
-                          value={val || ""}
+                          value={strVal}
                           onChange={(e) => handleValueChange(field.id, e.target.value)}
                           className="w-full rounded-lg border border-sky-200 bg-white px-3 py-1.5 text-xs text-slate-900 focus:border-sky-500 focus:ring-1 focus:ring-sky-200 focus:outline-hidden transition"
                         />
@@ -458,7 +457,7 @@ export function DocumentFormFiller({
                       {/* Select */}
                       {field.type === "select" && (
                         <select
-                          value={val || ""}
+                          value={strVal}
                           onChange={(e) => handleValueChange(field.id, e.target.value)}
                           className="w-full rounded-lg border border-sky-200 bg-white px-3 py-1.5 text-xs text-slate-900 focus:border-sky-500 focus:ring-1 focus:ring-sky-200 focus:outline-hidden transition"
                         >
@@ -519,17 +518,17 @@ export function DocumentFormFiller({
                                 </tr>
                               </thead>
                               <tbody>
-                                {((val as any[]) || []).length === 0 ? (
+                                {((val as Record<string, string>[]) || []).length === 0 ? (
                                   <tr>
                                     <td
                                       colSpan={(field.columns?.length || 3) + 1}
                                       className="p-3 text-center text-slate-400 text-xs"
                                     >
-                                      ยังไม่มีรายการ กดปุ่ม "+ เพิ่มแถว" ด้านล่างเพื่อบันทึกข้อมูล
+                                      ยังไม่มีรายการ กดปุ่ม &quot;+ เพิ่มแถว&quot; ด้านล่างเพื่อบันทึกข้อมูล
                                     </td>
                                   </tr>
                                 ) : (
-                                  (val as any[]).map((row, rIdx) => (
+                                  (val as Record<string, string>[]).map((row, rIdx) => (
                                     <tr key={rIdx} className="border-b border-sky-50 hover:bg-sky-50/30 transition">
                                       {(field.columns || []).map((_, cIdx) => (
                                         <td key={cIdx} className="border-r border-sky-50 p-1">
@@ -537,7 +536,7 @@ export function DocumentFormFiller({
                                             type="text"
                                             value={row[`col_${cIdx}`] || ""}
                                             onChange={(e) => {
-                                              const newRows = [...val];
+                                              const newRows = [...(val as Record<string, string>[])];
                                               newRows[rIdx] = {
                                                 ...newRows[rIdx],
                                                 [`col_${cIdx}`]: e.target.value,
@@ -552,7 +551,8 @@ export function DocumentFormFiller({
                                         <button
                                           type="button"
                                           onClick={() => {
-                                            const newRows = val.filter((_: any, i: number) => i !== rIdx);
+                                            const currentRows = val as Record<string, string>[];
+                                            const newRows = currentRows.filter((_, i) => i !== rIdx);
                                             handleValueChange(field.id, newRows);
                                           }}
                                           className="text-slate-400 hover:text-red-500 text-xs px-1"
@@ -616,7 +616,7 @@ export function DocumentFormFiller({
                     <div className="my-2 border border-dashed border-sky-200 rounded-md px-2 py-1.5 bg-sky-50/30">
                       <input
                         type="text"
-                        value={currentSubmission.values["footer_sign_prepared"] ?? currentSubmission.filledBy.name}
+                        value={String(currentSubmission.values["footer_sign_prepared"] ?? currentSubmission.filledBy.name)}
                         onChange={(e) => handleValueChange("footer_sign_prepared", e.target.value)}
                         placeholder="พิมพ์ชื่อผู้จัดทำ..."
                         className="w-full text-center font-bold text-xs text-sky-800 bg-transparent border-b border-sky-200 focus:border-sky-500 focus:outline-hidden pb-0.5"
@@ -645,7 +645,7 @@ export function DocumentFormFiller({
                     <div className="my-2 border border-dashed border-sky-200 rounded-md px-2 py-1.5 bg-sky-50/30">
                       <input
                         type="text"
-                        value={currentSubmission.values["footer_sign_reviewed"] || ""}
+                        value={String(currentSubmission.values["footer_sign_reviewed"] || "")}
                         onChange={(e) => handleValueChange("footer_sign_reviewed", e.target.value)}
                         placeholder="พิมพ์ชื่อผู้ทบทวน..."
                         className="w-full text-center font-bold text-xs text-sky-800 bg-transparent border-b border-sky-200 focus:border-sky-500 focus:outline-hidden pb-0.5"
@@ -674,7 +674,7 @@ export function DocumentFormFiller({
                     <div className="my-2 border border-dashed border-sky-200 rounded-md px-2 py-1.5 bg-sky-50/30">
                       <input
                         type="text"
-                        value={currentSubmission.values["footer_sign_approved"] || ""}
+                        value={String(currentSubmission.values["footer_sign_approved"] || "")}
                         onChange={(e) => handleValueChange("footer_sign_approved", e.target.value)}
                         placeholder="พิมพ์ชื่อผู้อนุมัติ..."
                         className="w-full text-center font-bold text-xs text-sky-800 bg-transparent border-b border-sky-200 focus:border-sky-500 focus:outline-hidden pb-0.5"
